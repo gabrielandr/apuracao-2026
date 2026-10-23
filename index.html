@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071833" />
+    <title>Apuração 2026 · Presidente</title>
+    <meta
+      name="description"
+      content="Apuração do segundo turno para presidente em 2026, com os arquivos oficiais do TSE. No momento exibe o primeiro turno para conferência."
+    />
+    <link rel="icon" href="assets/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <p id="aviso" class="aviso info" role="status">Carregando os arquivos oficiais do TSE…</p>
+      <header class="top">
+        <div>
+          <p class="kicker">Presidente</p>
+          <h1 id="titulo-escopo">Brasil</h1>
+          <p id="subtitulo" class="sub">Eleição federal de 2026</p>
+          <p id="nota-teste" class="nota">
+            Modo de teste com o 1º turno: os dois mais votados no Brasil. O 2º turno (eleição 6258) começa em 25/10/2026, às 17h de Brasília.
+          </p>
+        </div>
+        <div class="apuracao">
+          <p class="kicker"><span id="dot" class="dot"></span>Urnas apuradas</p>
+          <p id="pst" class="pst-grande">—</p>
+          <p id="secoes" class="sub"></p>
+          <p id="atualizacao" class="sub atualizacao">Atualização do TSE: —</p>
+          <p id="consulta" class="consulta"></p>
+        </div>
+      </header>
+      <button id="voltar" class="voltar" type="button" hidden>Voltar ao Brasil</button>
+      <main class="layout">
+        <section class="painel" aria-label="Candidatos">
+          <div id="painel">
+            <p class="vazio">Aguardando o arquivo oficial.</p>
+          </div>
+        </section>
+        <section class="mapa-card" aria-label="Mapa do Brasil">
+          <div class="mapa-head">
+            <p class="kicker">Estados</p>
+            <label>
+              Escolher estado
+              <select id="uf-select"></select>
+            </label>
+          </div>
+          <div class="map-scroll"><div id="mapa"></div></div>
+          <ul class="legenda">
+            <li><i class="sw gelo"></i> menos de 2 pontos</li>
+            <li><i class="sw lula-1"></i> Lula na frente, de 2 a 10</li>
+            <li><i class="sw lula-2"></i> Lula na frente, de 10 a 20</li>
+            <li><i class="sw lula-3"></i> Lula na frente, 20 ou mais</li>
+            <li><i class="sw flavio-1"></i> Flávio Bolsonaro na frente, de 2 a 10</li>
+            <li><i class="sw flavio-2"></i> Flávio Bolsonaro na frente, de 10 a 20</li>
+            <li><i class="sw flavio-3"></i> Flávio Bolsonaro na frente, 20 ou mais</li>
+            <li><i class="sw neutro"></i> sem dados ou 0% apurado</li>
+          </ul>
+        </section>
+      </main>
+      <footer class="rodape">
+        <p>
+          Dados oficiais do TSE, arquivo de resultado unificado (EA20). Este site não é do Tribunal.
+          Fonte deste recorte:
+          <a id="fonte" href="https://resultados.tse.jus.br/oficial/ele2026/6257/dados/br/br-c0001-e006257-u.json">arquivo oficial</a>.
+          <a id="link-tse" href="https://resultados.tse.jus.br/oficial/app/index.html#/eleicao/6257/uf/br/cargo/1/vis/nominal/resumo-geral">Abrir no site do TSE</a>.
+        </p>
+      </footer>
+    </div>
+    <noscript>Este painel precisa de JavaScript para ler os arquivos públicos do TSE.</noscript>
+    <script src="js/config.js"></script>
+    <script src="js/model.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
