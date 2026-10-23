@@ -1,0 +1,23 @@
+{
+  "eleicao": "6257",
+  "abrangencia": "br",
+  "pontos": [
+    {
+      "dg": "05/10/2026",
+      "hg": "12:51:47",
+      "pst": "100,00",
+      "candidatos": [
+        {
+          "nome": "FLAVIO BOLSONARO",
+          "pvap": "47,03",
+          "vap": "56104503"
+        },
+        {
+          "nome": "LULA",
+          "pvap": "45,16",
+          "vap": "53879538"
+        }
+      ]
+    }
+  ]
+}
