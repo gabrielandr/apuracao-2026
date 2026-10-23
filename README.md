@@ -59,10 +59,10 @@ O diretório está no `ele-c.json`, tipo `u`: `<base>/<ambiente>/<ciclo>/<cd_ele
 
 A cor do estado é a diferença, em pontos percentuais, entre o `pvapn` desses dois candidatos:
 
-- menos de 2: cinza gelo
-- de 2 a menos de 10: tom claro (vermelho se Lula lidera, azul se Flávio Bolsonaro lidera)
-- de 10 a menos de 20: tom médio
-- 20 ou mais: tom forte
+- menos de 2: branco `#ffffff`
+- de 2 a menos de 10: `#c44d4d` se Lula lidera, `#8787fb` se Flávio Bolsonaro lidera
+- de 10 a menos de 20: `#bb0b0b` ou `#4040fb`
+- 20 ou mais: `#800000` ou `#0303b5`
 - sem arquivo ou `pst` igual a 0: neutro
 
 ## CORS

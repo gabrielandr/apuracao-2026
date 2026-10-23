@@ -365,7 +365,7 @@
       const texto = scope ? model.compactPct(scope.pst) : "—";
       const oficial = scope ? model.formatPct(scope.pst) : "sem dados";
       nos.forEach(function (no) {
-        if (no.classList.contains("uf")) {
+        if (no.classList.contains("uf") || no.classList.contains("callout")) {
           no.classList.remove("neutro", "gelo", "lula-1", "lula-2", "lula-3", "flavio-1", "flavio-2", "flavio-3");
           no.classList.add(cor);
         }

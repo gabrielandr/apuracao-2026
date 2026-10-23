@@ -5,14 +5,15 @@
   --line: rgba(168, 204, 255, 0.18);
   --text: #f4f8ff;
   --muted: #b7c9e6;
-  --ice: #d5dee8;
+  --ice: #ffffff;
   --neutro: #4a5d73;
-  --lula-1: #f4b4b4;
-  --lula-2: #e35353;
-  --lula-3: #b11f1f;
-  --flavio-1: #b7d4f8;
-  --flavio-2: #3d86e0;
-  --flavio-3: #1a4f9c;
+  --lula-1: #c44d4d;
+  --lula-2: #bb0b0b;
+  --lula-3: #800000;
+  --flavio-1: #8787fb;
+  --flavio-2: #4040fb;
+  --flavio-3: #0303b5;
+  --rotulo-escuro: #102033;
   --gold: #ffd978;
   --ok: #3dd68c;
   --alerta: #f0c14d;
@@ -304,21 +305,33 @@ select {
 }
 .uf .sigla, .callout .sigla { font-weight: 700; }
 .uf .pst, .callout .pst { font-weight: 650; }
-.uf.gelo text, .uf.lula-1 text, .uf.flavio-1 text {
-  fill: #102033;
-  stroke: rgba(255, 255, 255, 0.45);
-  stroke-width: 2.5px;
+.uf.gelo text, .uf.flavio-1 text {
+  fill: var(--rotulo-escuro);
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 2.4px;
 }
-.uf.neutro text, .uf.lula-2 text, .uf.lula-3 text, .uf.flavio-2 text, .uf.flavio-3 text {
+.uf.neutro text,
+.uf.lula-1 text, .uf.lula-2 text, .uf.lula-3 text,
+.uf.flavio-2 text, .uf.flavio-3 text {
   fill: #fff;
-  stroke: rgba(6, 16, 36, 0.55);
-  stroke-width: 3px;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2.6px;
 }
 
 #callout-lines { pointer-events: none; stroke: rgba(214, 228, 248, 0.7); stroke-width: 1.1; }
 .callout { cursor: pointer; }
-.callout rect { fill: rgba(6, 18, 40, 0.78); stroke: rgba(214, 228, 248, 0.28); }
+.callout rect { fill: var(--neutro); stroke: rgba(255, 255, 255, 0.35); }
 .callout text { fill: #fff; font-family: Outfit, "Segoe UI", sans-serif; pointer-events: none; }
+.callout.gelo rect, .callout.flavio-1 rect { stroke: rgba(16, 32, 51, 0.35); }
+.callout.gelo text, .callout.flavio-1 text { fill: var(--rotulo-escuro); stroke: none; }
+.callout.lula-1 rect { fill: var(--lula-1); }
+.callout.lula-2 rect { fill: var(--lula-2); }
+.callout.lula-3 rect { fill: var(--lula-3); }
+.callout.flavio-1 rect { fill: var(--flavio-1); }
+.callout.flavio-2 rect { fill: var(--flavio-2); }
+.callout.flavio-3 rect { fill: var(--flavio-3); }
+.callout.gelo rect { fill: var(--ice); }
+.callout.neutro rect { fill: var(--neutro); }
 .callout.selecionado rect, .callout:focus rect { stroke: var(--gold); stroke-width: 1.6; }
 .callout:focus { outline: none; }
 
@@ -342,7 +355,7 @@ select {
   flex: none;
   border: 1px solid rgba(0, 0, 0, 0.25);
 }
-.sw.gelo { background: var(--ice); }
+.sw.gelo { background: var(--ice); border-color: rgba(16, 32, 51, 0.35); }
 .sw.neutro { background: var(--neutro); }
 .sw.lula-1 { background: var(--lula-1); }
 .sw.lula-2 { background: var(--lula-2); }
