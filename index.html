@@ -17,6 +17,12 @@
   </head>
   <body>
     <div class="shell">
+      <div class="nav-fixa">
+        <nav class="abas" aria-label="Turno">
+          <button id="aba-segundo" type="button" aria-selected="true">2º turno</button>
+          <button id="aba-primeiro" type="button" aria-selected="false">1º turno</button>
+        </nav>
+      </div>
       <p id="aviso" class="aviso info" role="status">Carregando os arquivos oficiais do TSE…</p>
       <p id="simulacao" class="aviso" hidden></p>
       <header class="top">
@@ -71,15 +77,15 @@
           <section class="regioes" aria-label="Por região">
             <p class="kicker">Por região</p>
             <ul id="lista-regioes"></ul>
-            <p class="nota-regiao">soma dos estados, calculada a partir dos dados do TSE. A comparação usa a captura ArvorCo/PNAD do 1º turno, na % de urnas mais próxima.</p>
+            <p id="nota-regioes" class="nota-regiao">soma dos estados, calculada a partir dos dados do TSE. A comparação usa a captura ArvorCo/PNAD do 1º turno, na % de urnas mais próxima.</p>
           </section>
         </div>
       </main>
       <section class="grafico-card" aria-label="Evolução dos votos válidos">
         <div class="grafico-head">
           <p class="kicker">Brasil</p>
-          <h2>Evolução dos votos válidos</h2>
-          <p class="nota">Um ponto a cada atualização do TSE. O eixo horizontal é o percentual de urnas apuradas; o horário de Brasília aparece no tooltip e na tabela.</p>
+          <h2 id="grafico-titulo">Evolução dos votos válidos</h2>
+          <p id="grafico-nota" class="nota">Um ponto a cada atualização do TSE. O eixo horizontal é o percentual de urnas apuradas; o horário de Brasília aparece no tooltip e na tabela.</p>
           <p id="grafico-leitura" class="sub"></p>
         </div>
         <ul id="grafico-legenda" class="legenda-linhas"></ul>

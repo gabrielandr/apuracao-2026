@@ -4,6 +4,8 @@ Painel estático do **segundo turno para presidente** (25/10/2026, a partir das 
 
 Enquanto o arquivo do 2º turno estiver em 0% de urnas, ou ainda não puder ser lido, o mapa, os candidatos, as regiões e o gráfico ficam em espera. A tela mostra o horário `dg` e `hg` do TSE e não coloca percentual do 1º turno no lugar do resultado. O card **Variação vs 1º turno** continua usando `data/primeiro-turno.json` e, antes da apuração, avisa que está aguardando.
 
+No topo, **2º turno** é a aba inicial. **1º turno** (também em `#1turno`) mostra o mapa e os cards com os arquivos oficiais da eleição 6257 e, embaixo, o gráfico nacional feito com `data/primeiro-turno-parciais.json`, a captura ArvorCo/PNAD. A consulta de 60 segundos continua no 2º turno.
+
 ## Voltar ao modo de teste
 
 O 1º turno fica só para conferência. Edite `js/config.js`:

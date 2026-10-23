@@ -210,7 +210,7 @@
         alvo.setAttribute("fill", "transparent");
         alvo.setAttribute("tabindex", "0");
         alvo.setAttribute("role", "button");
-        alvo.setAttribute("aria-label", serie.nome + ", " + (formatPct ? formatPct(ponto.pvap) : ponto.pvap) + ", urnas " + (formatPct ? formatPct(ponto.pst) : ponto.pst) + ", TSE " + ponto.dg + " " + ponto.hg + (ponto.primeiro ? ", primeiro ponto" : ponto.delta ? ", " + ponto.delta : ""));
+        alvo.setAttribute("aria-label", serie.nome + ", " + (formatPct ? formatPct(ponto.pvap) : ponto.pvap) + ", urnas " + (formatPct ? formatPct(ponto.pst) : ponto.pst) + (ponto.dg && ponto.hg ? ", TSE " + ponto.dg + " " + ponto.hg : "") + (ponto.primeiro ? ", primeiro ponto" : ponto.delta ? ", " + ponto.delta : ""));
         alvo.addEventListener("mouseenter", function () { mostrar(ponto.index, ponto.x, ponto.y); });
         alvo.addEventListener("focus", function () { mostrar(ponto.index, ponto.x, ponto.y); });
         alvo.addEventListener("mouseleave", esconder);
@@ -252,13 +252,15 @@
       const ponto = pontos[index];
       if (!ponto) return;
       tip.replaceChildren();
-      const hora = document.createElement("p");
-      hora.className = "tip-hora";
-      hora.textContent = "TSE " + ponto.dg + " às " + ponto.hg + " (Brasília)";
+      if (ponto.dg && ponto.hg) {
+        const hora = document.createElement("p");
+        hora.className = "tip-hora";
+        hora.textContent = "TSE " + ponto.dg + " às " + ponto.hg + " (Brasília)";
+        tip.appendChild(hora);
+      }
       const urnas = document.createElement("p");
       urnas.className = "tip-hora";
       urnas.textContent = "Urnas apuradas: " + (formatPct ? formatPct(ponto.pst) : ponto.pst);
-      tip.appendChild(hora);
       tip.appendChild(urnas);
       ponto.candidatos.forEach(function (cand) {
         const linha = document.createElement("p");

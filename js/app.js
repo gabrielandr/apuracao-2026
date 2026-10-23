@@ -22,6 +22,12 @@
   const graficoTabela = document.getElementById("grafico-tabela");
   const graficoOrigem = document.getElementById("grafico-origem");
   const graficoLeitura = document.getElementById("grafico-leitura");
+  const graficoTitulo = document.getElementById("grafico-titulo");
+  const graficoNota = document.getElementById("grafico-nota");
+  const notaRegioes = document.getElementById("nota-regioes");
+  const abaSegundo = document.getElementById("aba-segundo");
+  const abaPrimeiro = document.getElementById("aba-primeiro");
+  const secaoVariacao = document.querySelector(".variacao");
   const variacaoTitulo = document.getElementById("variacao-titulo");
   const variacaoEstado = document.getElementById("variacao-estado");
   const variacaoLista = document.getElementById("variacao-lista");
@@ -30,11 +36,14 @@
   const historicoApi = window.ApuracaoHistorico;
   const graficoApi = window.ApuracaoGrafico;
   const memory = Object.create(null);
+  const memory1 = Object.create(null);
   let historicoArquivo = [];
   let historicoEstado = "vazio";
   let primeiroTurno = null;
   let parciais = null;
   let inflight = false;
+  let primeiroOficialEstado = "vazio";
+  let carregando1 = null;
   let lastAttemptOk = false;
   let failedUfs = [];
 
@@ -81,11 +90,23 @@
     return location.hash.replace(/^#\/?/, "").toLowerCase();
   }
 
+  function vistaPrimeiro() {
+    return /(^|\/)1turno($|\/)/.test(hashLimpo());
+  }
+
   function currentUf() {
-    const hash = hashLimpo();
-    if (!hash || hash === "br" || hash === "brasil" || hash === "grafico") return "br";
+    const partes = hashLimpo().split("/").filter(Boolean);
+    const hash = partes.filter(function (parte) {
+      return parte !== "1turno" && parte !== "2turno" && parte !== "grafico";
+    })[0] || "";
+    if (!hash || hash === "br" || hash === "brasil") return "br";
     if (hash === "zz" || model.UFS.indexOf(hash) !== -1) return hash;
     return "br";
+  }
+
+  function hashDoRecorte(uf, primeiro) {
+    if (primeiro) return uf === "br" ? "#1turno" : "#1turno/" + uf;
+    return "#/" + uf;
   }
 
   function arquivoDados(nome) {
@@ -141,6 +162,38 @@
     } catch (err) {
       primeiroTurno = null;
     }
+  }
+
+  function configDaTela() {
+    if (!vistaPrimeiro()) return config;
+    return {
+      code: "6257",
+      selection: "top2",
+      cycle: config.cycle,
+      cargo: config.cargo,
+      ambiente: config.ambiente,
+      base: config.base,
+    };
+  }
+
+  function scopeTela(uf) {
+    if (!vistaPrimeiro()) return scopeOf(uf);
+    const entry = memory1[uf];
+    return entry && entry.json ? model.parseScope(entry.json) : null;
+  }
+
+  function pairVisivel() {
+    const brasil = scopeTela("br");
+    if (!brasil) return [];
+    return model.selectPair(brasil.candidates, configDaTela().selection);
+  }
+
+  function pairNoEscopoVisivel(uf) {
+    const nacional = pairVisivel();
+    const scope = scopeTela(uf);
+    if (!scope || !nacional.length) return [];
+    if (uf === "br") return nacional;
+    return model.alignPair(scope, nacional);
   }
 
   function pairNacional() {
@@ -207,6 +260,34 @@
     const brasil = scopeOf("br");
     const aoVivo = brasil ? historicoApi.pontoOficial(brasil, pairNacional()) : null;
     return historicoApi.mesclar(historicoArquivo, aoVivo);
+  }
+
+  function loadPrimeiroOficial() {
+    if (memory1.br) return Promise.resolve();
+    if (carregando1) return carregando1;
+    const cfg = {
+      code: "6257",
+      selection: "top2",
+      cycle: config.cycle,
+      cargo: config.cargo,
+      ambiente: config.ambiente,
+      base: config.base,
+    };
+    primeiroOficialEstado = "carregando";
+    const alvos = ["br"].concat(model.UFS, ["zz"]);
+    carregando1 = Promise.all(alvos.map(function (uf) {
+      return fetchJson(model.fileUrl(cfg, uf)).then(function (json) {
+        if (!json || String(json.ele) !== "6257") throw new Error("eleição");
+        memory1[uf] = { json: json, savedAt: Date.now() };
+      }).catch(function () {
+        return null;
+      });
+    })).then(function () {
+      primeiroOficialEstado = memory1.br ? "ok" : "erro";
+      carregando1 = null;
+      if (vistaPrimeiro()) render();
+    });
+    return carregando1;
   }
 
   async function loadAll() {
@@ -305,16 +386,17 @@
   }
 
   function renderPainel(uf) {
-    const scope = scopeOf(uf);
+    const scope = scopeTela(uf);
+    const cfg = configDaTela();
     const nome = model.NOMES[uf] || uf.toUpperCase();
     titulo.textContent = nome;
     document.title = nome + " · Apuração 2026";
     sincronizarSeletor(uf);
-    fonte.href = model.fileUrl(config, uf);
-    fonte.textContent = "arquivo oficial " + uf + "-c0001-e" + String(config.code).padStart(6, "0") + "-u.json";
+    fonte.href = model.fileUrl(cfg, uf);
+    fonte.textContent = "arquivo oficial " + uf + "-c0001-e" + String(cfg.code).padStart(6, "0") + "-u.json";
     linkTse.href =
       "https://resultados.tse.jus.br/oficial/app/index.html#/eleicao/" +
-      config.code +
+      cfg.code +
       "/uf/" +
       uf +
       "/cargo/1/vis/nominal/resumo-geral";
@@ -350,13 +432,13 @@
     atualizacaoEl.dataset.dg = scope.dg;
     atualizacaoEl.dataset.hg = scope.hg;
 
-    const entry = memory[uf];
+    const entry = (vistaPrimeiro() ? memory1 : memory)[uf];
     consultaEl.textContent = entry
       ? "Última consulta: " + horarioBrasilia(new Date(entry.savedAt)) + " (Brasília)" + (entry.fromCache ? " · leitura guardada" : "")
       : "";
 
-    const slots = pairNoEscopo(uf);
-    const nacional = pairNacional();
+    const slots = pairNoEscopoVisivel(uf);
+    const nacional = pairVisivel();
     painel.innerHTML = "";
     const lista = document.createElement("div");
     lista.className = "lista";
@@ -377,7 +459,7 @@
   function renderCandidato(ref, cand, aguardando) {
     const article = document.createElement("article");
     article.className = "cand " + (ref.lado || "outro");
-    const foto = model.photoUrl(config, (cand || ref).sq);
+    const foto = model.photoUrl(configDaTela(), (cand || ref).sq);
     const wrap = document.createElement("div");
     wrap.className = "avatar-wrap";
     const iniciais = document.createElement("span");
@@ -466,9 +548,9 @@
   }
 
   function renderMapa() {
-    const nacional = pairNacional();
+    const nacional = pairVisivel();
     model.UFS.forEach(function (uf) {
-      const scope = scopeOf(uf);
+      const scope = scopeTela(uf);
       const nos = mapa.querySelectorAll('[data-uf="' + uf + '"]');
       const cor = scope && nacional.length === 2 ? model.colorFor(scope, model.alignPair(scope, nacional)) : "neutro";
       const comecou = apurando(scope);
@@ -590,7 +672,107 @@
     graficoTabela.append(thead, tbody);
   }
 
+  function textosGraficoSegundo() {
+    graficoTitulo.textContent = "Evolução dos votos válidos";
+    graficoNota.textContent = "Um ponto a cada atualização do TSE. O eixo horizontal é o percentual de urnas apuradas; o horário de Brasília aparece no tooltip e na tabela.";
+    graficoTabela.querySelector("caption").textContent = "Série oficial do Brasil";
+  }
+
+  function pontosDoPrimeiro() {
+    const serie = parciais && parciais.serie ? parciais.serie.br : null;
+    if (!serie) return [];
+    return serie.map(function (ponto, index) {
+      const anterior = index > 0 ? serie[index - 1] : null;
+      function candidato(nome, lado, centesimos, previo) {
+        return {
+          nome: nome,
+          lado: lado,
+          pvap: model.formatCentesimos(centesimos).replace("%", ""),
+          pvapN: centesimos / 100,
+          vap: "",
+          delta: previo == null ? "" : model.formatPontos(centesimos - previo),
+          primeiro: previo == null,
+        };
+      }
+      return {
+        dg: "",
+        hg: "",
+        pst: model.formatCentesimos(ponto[0]).replace("%", ""),
+        pstN: ponto[0] / 100,
+        candidatos: [
+          candidato("FLAVIO BOLSONARO", "flavio", ponto[1], anterior ? anterior[1] : null),
+          candidato("LULA", "lula", ponto[2], anterior ? anterior[2] : null),
+        ],
+      };
+    });
+  }
+
+  function renderTabelaParciais(anotados) {
+    const caption = graficoTabela.querySelector("caption");
+    graficoTabela.replaceChildren();
+    if (caption) graficoTabela.appendChild(caption);
+    if (!anotados.length) return;
+    const thead = document.createElement("thead");
+    const linha1 = document.createElement("tr");
+    ["Urnas apuradas", "Flávio", "Variação", "Lula", "Variação"].forEach(function (rotulo) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = rotulo;
+      linha1.appendChild(th);
+    });
+    thead.appendChild(linha1);
+    const tbody = document.createElement("tbody");
+    anotados.forEach(function (ponto) {
+      const flavio = ponto.candidatos[0];
+      const lula = ponto.candidatos[1];
+      const tr = document.createElement("tr");
+      tr.append(
+        celula(model.formatPct(ponto.pst)),
+        celula(model.formatPct(flavio.pvap)),
+        celula(flavio.primeiro ? "primeiro ponto" : flavio.delta || "—"),
+        celula(model.formatPct(lula.pvap)),
+        celula(lula.primeiro ? "primeiro ponto" : lula.delta || "—")
+      );
+      tbody.appendChild(tr);
+    });
+    graficoTabela.append(thead, tbody);
+  }
+
+  function renderGraficoPrimeiro() {
+    graficoTitulo.textContent = "Evolução no 1º turno";
+    graficoNota.textContent = "Série nacional da captura de terceiros dos arquivos oficiais do TSE (ArvorCo/PNAD), eleição 6257. O eixo horizontal é o percentual de urnas apuradas. Não traz o horário de cada atualização do TSE.";
+    graficoTabela.querySelector("caption").textContent = "Série nacional do 1º turno, captura ArvorCo/PNAD";
+    const pontos = pontosDoPrimeiro();
+    if (!pontos.length) {
+      graficoLegenda.replaceChildren();
+      graficoEl.replaceChildren();
+      renderTabelaParciais([]);
+      graficoLeitura.textContent = "";
+      graficoOrigem.hidden = false;
+      graficoOrigem.textContent = "A série do 1º turno não carregou.";
+      return;
+    }
+    renderLegenda(pontos);
+    graficoApi.desenhar(graficoEl, pontos, model.formatPct);
+    renderTabelaParciais(pontos);
+    const ultimo = pontos[pontos.length - 1];
+    graficoLeitura.textContent =
+      "Final da série: " +
+      model.formatPct(ultimo.pst) +
+      " das urnas · Flávio " +
+      model.formatPct(ultimo.candidatos[0].pvap) +
+      " · Lula " +
+      model.formatPct(ultimo.candidatos[1].pvap);
+    graficoOrigem.hidden = false;
+    graficoOrigem.textContent = parciais.fonte || "Captura ArvorCo/PNAD dos arquivos oficiais do TSE.";
+  }
+
   function renderGrafico() {
+    if (vistaPrimeiro()) {
+      renderGraficoPrimeiro();
+      return;
+    }
+    textosGraficoSegundo();
     const pontos = serieBrasil();
     const comSerie = pontos.some(function (ponto) { return model.num(ponto.pst) > 0; });
     if (!comSerie) {
@@ -645,13 +827,37 @@
     }
   }
 
+  function renderAbas() {
+    const primeiro = vistaPrimeiro();
+    abaSegundo.setAttribute("aria-selected", primeiro ? "false" : "true");
+    abaPrimeiro.setAttribute("aria-selected", primeiro ? "true" : "false");
+  }
+
   function render() {
     const uf = currentUf();
+    renderAbas();
+    atualizarSimulacao();
     renderAviso();
     renderPainel(uf);
     renderMapa();
     renderRegioes();
-    renderVariacao(uf);
+    secaoVariacao.hidden = vistaPrimeiro();
+    notaRegioes.textContent = vistaPrimeiro()
+      ? "soma dos estados do 1º turno, calculada a partir dos arquivos oficiais do TSE."
+      : "soma dos estados, calculada a partir dos dados do TSE. A comparação usa a captura ArvorCo/PNAD do 1º turno, na % de urnas mais próxima.";
+    if (vistaPrimeiro()) {
+      if (!scopeTela("br") && primeiroOficialEstado !== "erro") {
+        setAviso("Carregando o arquivo oficial do 1º turno…", "info");
+      } else if (!scopeTela("br")) {
+        setAviso("O arquivo oficial do 1º turno não respondeu. Nenhum número foi estimado.", "erro");
+        dot.className = "dot erro";
+      } else {
+        setAviso("", "");
+        dot.className = "dot ok";
+      }
+    } else {
+      renderVariacao(uf);
+    }
     renderGrafico();
   }
 
@@ -881,7 +1087,7 @@
   function renderRegioes() {
     const lista = document.getElementById("lista-regioes");
     lista.replaceChildren();
-    if (simulacaoAtiva()) {
+    if (simulacaoAtiva() && !vistaPrimeiro()) {
       model.REGIOES.forEach(function (regiao) {
         const cmp = comparacaoSimulada(regiao.id);
         const li = document.createElement("li");
@@ -925,7 +1131,7 @@
       });
       return;
     }
-    const alguma = model.UFS.some(function (uf) { return apurando(scopeOf(uf)); });
+    const alguma = model.UFS.some(function (uf) { return apurando(scopeTela(uf)); });
     if (!alguma) {
       model.REGIOES.forEach(function (regiao) {
         const li = document.createElement("li");
@@ -941,9 +1147,9 @@
       });
       return;
     }
-    const pair = pairNacional();
+    const pair = pairVisivel();
     model.REGIOES.forEach(function (regiao) {
-      const scopes = regiao.ufs.map(function (uf) { return scopeOf(uf); });
+      const scopes = regiao.ufs.map(function (uf) { return scopeTela(uf); });
       const item = model.agregarRegiao(regiao, scopes, pair);
       const li = document.createElement("li");
       const linha = document.createElement("p");
@@ -976,16 +1182,23 @@
         urnas.className = "regiao-urnas";
         urnas.textContent = model.formatCentesimos(item.urnasCentesimos) + " das urnas";
         li.appendChild(urnas);
-        if (item.urnasCentesimos > 0) appendVs(li, comparacaoRealRegiao(regiao));
+        if (!vistaPrimeiro() && item.urnasCentesimos > 0) appendVs(li, comparacaoRealRegiao(regiao));
       }
       lista.appendChild(li);
     });
   }
 
   function selecionar(uf) {
-    const destino = "#/" + uf;
-    if (location.hash !== destino) location.hash = destino;
+    const destino = hashDoRecorte(uf, vistaPrimeiro());
+    if (location.hash.toLowerCase() !== destino.toLowerCase()) location.hash = destino;
     else render();
+  }
+
+  function abrirTurno(primeiro) {
+    const destino = hashDoRecorte(currentUf(), primeiro);
+    if (location.hash.toLowerCase() !== destino.toLowerCase()) location.hash = destino;
+    else render();
+    if (primeiro) loadPrimeiroOficial();
   }
 
   function bindMapa() {
@@ -1040,6 +1253,8 @@
       history.replaceState(null, "", location.pathname + location.search + "#/br");
     }
     preencherSeletor();
+    abaSegundo.addEventListener("click", function () { abrirTurno(false); });
+    abaPrimeiro.addEventListener("click", function () { abrirTurno(true); });
     window.addEventListener("hashchange", render);
     hydrate();
     try {
@@ -1051,8 +1266,14 @@
       mapa.innerHTML = '<p class="vazio">Não foi possível carregar o mapa.</p>';
     }
     if (scopeOf("br")) render();
+    const primeiroOficial = vistaPrimeiro() ? loadPrimeiroOficial() : null;
     await Promise.all([loadAll(), carregarPrimeiroTurno(), carregarParciais()]);
     render();
+    if (primeiroOficial) {
+      primeiroOficial.then(function () {
+        if (vistaPrimeiro()) render();
+      });
+    }
     setInterval(loadAll, config.pollMs);
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") loadAll();
