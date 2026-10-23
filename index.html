@@ -40,16 +40,11 @@
           <button id="aba-mapa" type="button" role="tab" aria-controls="vista-mapa" aria-selected="true">Mapa</button>
           <button id="aba-grafico" type="button" role="tab" aria-controls="vista-grafico" aria-selected="false">Gráfico</button>
         </nav>
-        <button id="voltar" class="voltar" type="button" hidden>Voltar ao Brasil</button>
       </div>
       <main class="layout" id="vista-mapa" role="tabpanel" aria-labelledby="aba-mapa">
         <section class="mapa-card" aria-label="Mapa do Brasil">
           <div class="mapa-head">
             <p class="kicker">Estados</p>
-            <label>
-              Escolher estado
-              <select id="uf-select"></select>
-            </label>
           </div>
           <div class="map-scroll"><div id="mapa"></div></div>
           <ul class="legenda">
@@ -65,6 +60,9 @@
         </section>
         <div class="coluna">
           <section class="painel" aria-label="Candidatos">
+            <div class="recorte">
+              <select id="recorte" aria-label="Recorte"></select>
+            </div>
             <div id="painel">
               <p class="vazio">Aguardando o arquivo oficial.</p>
             </div>

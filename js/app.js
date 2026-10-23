@@ -11,10 +11,9 @@
   const secoesEl = document.getElementById("secoes");
   const atualizacaoEl = document.getElementById("atualizacao");
   const consultaEl = document.getElementById("consulta");
-  const voltar = document.getElementById("voltar");
   const painel = document.getElementById("painel");
   const mapa = document.getElementById("mapa");
-  const seletor = document.getElementById("uf-select");
+  const seletor = document.getElementById("recorte");
   const fonte = document.getElementById("fonte");
   const linkTse = document.getElementById("link-tse");
   const dot = document.getElementById("dot");
@@ -278,8 +277,7 @@
     const nome = model.NOMES[uf] || uf.toUpperCase();
     titulo.textContent = nome;
     document.title = nome + " · Apuração 2026";
-    voltar.hidden = uf === "br";
-    seletor.value = uf;
+    sincronizarSeletor(uf);
     fonte.href = model.fileUrl(config, uf);
     fonte.textContent = "arquivo oficial " + uf + "-c0001-e" + String(config.code).padStart(6, "0") + "-u.json";
     linkTse.href =
@@ -614,7 +612,6 @@
     renderAviso();
     if (aba === "grafico") {
       renderPainel("br");
-      voltar.hidden = true;
       renderGrafico();
     } else {
       renderPainel(currentUf());
@@ -778,15 +775,13 @@
   }
 
   function preencherSeletor() {
-    const opcoes = [{ uf: "br", nome: "Brasil" }]
-      .concat(
-        model.UFS.map(function (uf) {
-          return { uf: uf, nome: model.NOMES[uf] };
-        }).sort(function (a, b) {
-          return a.nome.localeCompare(b.nome, "pt");
-        })
-      )
-      .concat([{ uf: "zz", nome: "Exterior" }]);
+    const opcoes = [{ uf: "br", nome: "Brasil" }].concat(
+      model.UFS.map(function (uf) {
+        return { uf: uf, nome: model.NOMES[uf] };
+      }).sort(function (a, b) {
+        return a.nome.localeCompare(b.nome, "pt");
+      })
+    );
     opcoes.forEach(function (item) {
       const option = document.createElement("option");
       option.value = item.uf;
@@ -796,6 +791,19 @@
     seletor.addEventListener("change", function () {
       selecionar(seletor.value);
     });
+  }
+
+  function sincronizarSeletor(uf) {
+    let extra = seletor.querySelector('option[value="zz"]');
+    if (uf === "zz" && !extra) {
+      extra = document.createElement("option");
+      extra.value = "zz";
+      extra.textContent = model.NOMES.zz;
+      seletor.appendChild(extra);
+    } else if (uf !== "zz" && extra) {
+      extra.remove();
+    }
+    seletor.value = uf;
   }
 
   async function init() {
@@ -809,9 +817,6 @@
     });
     abaGrafico.addEventListener("click", function () {
       abrirAba("grafico");
-    });
-    voltar.addEventListener("click", function () {
-      selecionar("br");
     });
     window.addEventListener("hashchange", render);
     hydrate();

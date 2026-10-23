@@ -77,7 +77,7 @@ Não foi preciso espelhar os JSON. Se o TSE passar a bloquear CORS, o caminho gr
 
 ## Mapa
 
-`assets/brazil.svg` é gerado por `scripts/build-map.py` a partir do GeoJSON público [brazil-states](https://github.com/codeforamerica/click_that_hood) (malha por UF, simplificada). O mapa por município fica para depois. O Exterior (ZZ) não entra no desenho; está no seletor porque o total do Brasil inclui esses votos.
+`assets/brazil.svg` é gerado por `scripts/build-map.py` a partir do GeoJSON público [brazil-states](https://github.com/codeforamerica/click_that_hood) (malha por UF, simplificada). O mapa por município fica para depois. O Exterior (ZZ) não entra no desenho nem na lista do recorte. O dropdown no topo do card dos candidatos oferece Brasil e as 27 UFs pelo nome; escolher uma opção equivale a clicar no mapa, e o clique no mapa atualiza o dropdown. O total do Brasil continua vindo do arquivo nacional, que já inclui o Exterior. Um link `#/zz` ainda abre esse arquivo.
 
 ## Gráfico e histórico
 
