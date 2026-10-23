@@ -1,6 +1,10 @@
 name: Registrar histórico da apuração
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/historico.yml"
   schedule:
     # UTC. O GitHub atrasa crons; 5 minutos é o intervalo pedido.
     - cron: "*/5 * * * *"
