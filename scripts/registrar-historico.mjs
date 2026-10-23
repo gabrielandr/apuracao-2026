@@ -71,6 +71,18 @@ async function main() {
     console.error("O ponto não reproduz dg, hg e pst oficiais.");
     process.exit(1);
   }
+  if (!(model.num(ponto.pst) > 0)) {
+    console.log(
+      "sem ponto novo: " +
+        ponto.dg +
+        " " +
+        ponto.hg +
+        " está em " +
+        ponto.pst +
+        " de urnas; a série começa quando houver apuração"
+    );
+    return;
+  }
 
   const doc = ler();
   const mesclado = historico.mesclar(doc.pontos, ponto);

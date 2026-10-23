@@ -9,11 +9,10 @@
  *         campo cdt2 = 6258
  *   6258  2º turno federal   "Eleição Ordinária Federal - 2026 2º Turno"
  *
- * Agora o site usa o 1º turno para conferência, com os dois mais votados.
- * No 2º turno (25/10/2026, a partir das 17h de Brasília), troque para:
+ * O site está no 2º turno. Para voltar ao modo de teste do 1º turno:
  *
- *   code: "6258",
- *   selection: "runoff",
+ *   code: "6257",
+ *   selection: "top2",
  *
  * selection:
  *   "top2"    os dois mais votados no Brasil (teste do 1º turno)
@@ -21,8 +20,8 @@
  *             só os dois candidatos, mostra esses dois
  */
 window.APURACAO = {
-  code: "6257",
-  selection: "top2",
+  code: "6258",
+  selection: "runoff",
   cycle: "ele2026",
   cargo: 1,
   ambiente: "oficial",

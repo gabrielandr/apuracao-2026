@@ -1,17 +1,17 @@
 # Apuração 2026
 
-Painel estático do **segundo turno para presidente** (25/10/2026, a partir das 17h de Brasília). Os números vêm só dos JSON oficiais do TSE. Nada é estimado: se a fonte falhar, a tela avisa e mantém a última leitura.
+Painel estático do **segundo turno para presidente** (25/10/2026, a partir das 17h de Brasília). Os números vêm só dos JSON oficiais do TSE, eleição **6258**. Nada é estimado: se a fonte falhar, a tela avisa e mantém a última leitura desta eleição.
 
-Neste momento o arquivo `js/config.js` aponta para o **1º turno (eleição 6257)**, para conferir com votos reais. O 1º turno teve vários candidatos; o modo `top2` mostra os dois mais votados no Brasil e usa esses mesmos dois em cada estado.
+Enquanto o arquivo do 2º turno estiver em 0% de urnas, ou ainda não puder ser lido, o mapa, os candidatos, as regiões e o gráfico ficam em espera. A tela mostra o horário `dg` e `hg` do TSE e não coloca percentual do 1º turno no lugar do resultado. O card **Variação vs 1º turno** continua usando `data/primeiro-turno.json` e, antes da apuração, avisa que está aguardando.
 
-## Trocar para o 2º turno
+## Voltar ao modo de teste
 
-Edite só `js/config.js`:
+O 1º turno fica só para conferência. Edite `js/config.js`:
 
 ```js
 window.APURACAO = {
-  code: "6258",
-  selection: "runoff",
+  code: "6257",
+  selection: "top2",
   // o restante permanece
 };
 ```
@@ -23,7 +23,7 @@ Os códigos saem de [`ele-c.json`](https://resultados.tse.jus.br/oficial/comum/c
 | 6257 | Eleição Ordinária Federal, 1º turno (`cdt2` = 6258) | 04/10/2026 |
 | 6258 | Eleição Ordinária Federal, 2º turno | 25/10/2026 |
 
-`selection: "runoff"` prefere quem está com situação de 2º turno. No arquivo do 2º turno já são só os dois candidatos, e os dois aparecem mesmo com zero voto. Antes das 17h de 25/10/2026 esse arquivo oficial está em 0,00% de urnas apuradas; a tela mostra esse zero, não um número estimado.
+`selection: "runoff"` prefere quem está com situação de 2º turno. No arquivo do 2º turno já são só os dois candidatos. Com 0% de urnas a tela não exibe o voto nem o percentual deles.
 
 ## Endpoints
 
@@ -57,9 +57,9 @@ O diretório está no `ele-c.json`, tipo `u`: `<base>/<ambiente>/<ciclo>/<cd_ele
 | Abstenção | `e.a` e `e.pa` |
 | Horário do TSE | `dg` e `hg`, horário de Brasília |
 
-O card **Por região**, na aba Mapa, soma o `vap` de cada candidato nas UFs da região e divide pela soma de `v.vv` (votos válidos) dessas UFs. O percentual de urnas é a soma de `s.st` dividida pela soma de `s.ts`. Não é média de percentuais. O Exterior (ZZ) fica de fora. O TSE não publica esse recorte.
+O card **Por região** soma o `vap` de cada candidato nas UFs da região e divide pela soma de `v.vv` (votos válidos) dessas UFs. O percentual de urnas é a soma de `s.st` dividida pela soma de `s.ts`. Não é média de percentuais. O Exterior (ZZ) fica de fora. O TSE não publica esse recorte.
 
-O card **Variação vs 1º turno** compara o `pvap` do recorte selecionado com o `pvap` da eleição 6257 na mesma UF. O candidato é o número `22` ou `13`. Enquanto o site estiver no 1º turno, o card avisa que o 2º turno não começou. No arquivo da 6258 com 0% de urnas, o card diz que a apuração ainda não começou. `data/primeiro-turno.json` guarda só `dg`, `hg`, `pst` e, para esses dois números, `n`, `nome`, `pvap` e `vap`.
+O card **Variação vs 1º turno** compara o `pvap` do recorte selecionado com o `pvap` da eleição 6257 na mesma UF. O candidato é o número `22` ou `13`. No arquivo da 6258 com 0% de urnas, o card diz que a apuração ainda não começou e mostra o percentual do 1º turno só nessa comparação. `data/primeiro-turno.json` guarda só `dg`, `hg`, `pst` e, para esses dois números, `n`, `nome`, `pvap` e `vap`.
 
 A cor do estado é a diferença, em pontos percentuais, entre o `pvapn` desses dois candidatos:
 
@@ -81,13 +81,13 @@ Não foi preciso espelhar os JSON. Se o TSE passar a bloquear CORS, o caminho gr
 
 ## Gráfico e histórico
 
-O menu acima do mapa tem duas abas. **Mapa** é o painel atual. **Gráfico** mostra a evolução do percentual de votos válidos (`pvap`) dos dois candidatos no Brasil, um ponto por atualização do TSE. O eixo horizontal é o `pst` (urnas apuradas). O tooltip e a tabela mostram também `dg` e `hg`. A variação desde o ponto anterior, em pontos percentuais, é calculada na tela a partir desses `pvap`; ela não é gravada.
+Abaixo do mapa e dos cards, em largura cheia, o gráfico mostra a evolução do percentual de votos válidos (`pvap`) dos dois candidatos no Brasil, um ponto por atualização do TSE. O eixo horizontal é o `pst` (urnas apuradas). O tooltip e a tabela mostram também `dg` e `hg`. A variação desde o ponto anterior, em pontos percentuais, é calculada na tela a partir desses `pvap`; ela não é gravada. Antes da primeira urna apurada, o gráfico fica em espera e mostra o horário do arquivo do Brasil. Um link antigo `#/grafico` abre o Brasil.
 
 Quem abre o site depois do início da apuração lê a série já publicada em `data/historico-{eleicao}.json`. O navegador acrescenta, só na memória, o ponto da leitura atual quando o `dg`+`hg` do Brasil é mais novo que o último ponto do arquivo. Não há ponto duplicado.
 
 O workflow `.github/workflows/historico.yml` roda a cada 5 minutos (o GitHub pode atrasar) e também por disparo manual. Ele baixa o JSON oficial do Brasil da eleição de `js/config.js`. Se o horário `dg`+`hg` mudou, acrescenta um ponto com `dg`, `hg`, `pst` e, para cada candidato, `nome`, `pvap` e `vap`, grava na `main` e publica o Pages de novo. Um push feito pelo `GITHUB_TOKEN` não dispara o outro workflow, por isso este já faz o deploy. Enquanto o horário não muda, o workflow não cria commit.
 
-Não existe série histórica oficial do 1º turno. O primeiro ponto real é o arquivo congelado da eleição configurada. No 2º turno, troque `js/config.js` para `6258` / `runoff`: a série passa a ser `data/historico-6258.json` e o cron, que já fica ativo, só começa a acumular pontos quando o TSE mudar `dg` ou `hg`.
+Não existe série histórica oficial do 1º turno. `data/historico-6257.json` guarda o ponto congelado daquele teste e não entra na página enquanto a eleição configurada for a 6258. A série do 2º turno é `data/historico-6258.json`. O cron só grava um ponto quando o `pst` do Brasil é maior que zero e o `dg`+`hg` mudou. Enquanto as urnas estão em 0%, o workflow não cria commit.
 
 ```bash
 node scripts/historico.test.mjs

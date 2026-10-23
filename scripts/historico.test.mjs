@@ -129,7 +129,7 @@ assert(serieLula.pontos[1].y > serieLula.pontos[0].y, "queda de pvap desce no gr
 assert(serieFlavio.pontos[0].x < desenho.plot.x + desenho.plot.w * 0.05, "1% de urnas fica no começo do eixo");
 
 const destino = new URL("../data/historico-" + config.code + ".json", import.meta.url);
-assert(!fs.existsSync(destino), "o teste não grava data/historico");
+const historicoAntes = fs.existsSync(destino) ? fs.readFileSync(destino, "utf8") : null;
 
 const url = model.fileUrl(config, "br");
 const response = await fetch(url);
@@ -147,9 +147,10 @@ real.candidatos.forEach(function (cand) {
   assert(bruto, "nome publicado " + cand.nome);
   assert(cand.pvap === String(bruto.pvap) && cand.vap === String(bruto.vap), "pvap e vap idênticos ao JSON");
 });
-assert(real.candidatos.some(function (c) { return c.nome.indexOf("LULA") !== -1 && c.pvap === "45,16" && c.vap === "53879538"; }), "Lula no ponto real");
-assert(real.candidatos.some(function (c) { return c.nome.indexOf("FLAVIO") !== -1 && c.pvap === "47,03" && c.vap === "56104503"; }), "Flávio no ponto real");
+assert(real.candidatos.length === 2, "dois candidatos no ponto real");
 assert(historico.mesclar([real], real).length === 1, "o ponto real não duplica");
+const historicoDepois = fs.existsSync(destino) ? fs.readFileSync(destino, "utf8") : null;
+assert(historicoAntes === historicoDepois, "o teste não grava data/historico");
 
 function achar(payload, nome) {
   for (const agr of payload.carg[0].agr || []) {

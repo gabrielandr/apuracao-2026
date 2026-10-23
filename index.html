@@ -7,7 +7,7 @@
     <title>Apuração 2026 · Presidente</title>
     <meta
       name="description"
-      content="Apuração do segundo turno para presidente em 2026, com os arquivos oficiais do TSE. No momento exibe o primeiro turno para conferência."
+      content="Apuração do segundo turno para presidente em 2026, com os arquivos oficiais do TSE."
     />
     <link rel="icon" href="assets/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,8 +23,8 @@
           <p class="kicker">Presidente</p>
           <h1 id="titulo-escopo">Brasil</h1>
           <p id="subtitulo" class="sub">Eleição federal de 2026</p>
-          <p id="nota-teste" class="nota">
-            Modo de teste com o 1º turno: os dois mais votados no Brasil. O 2º turno (eleição 6258) começa em 25/10/2026, às 17h de Brasília.
+          <p id="nota-teste" class="nota" hidden>
+            Modo de teste com o 1º turno: os dois mais votados no Brasil.
           </p>
         </div>
         <div class="apuracao">
@@ -35,13 +35,7 @@
           <p id="consulta" class="consulta"></p>
         </div>
       </header>
-      <div class="nav-fixa">
-        <nav class="abas" aria-label="Visualização">
-          <button id="aba-mapa" type="button" role="tab" aria-controls="vista-mapa" aria-selected="true">Mapa</button>
-          <button id="aba-grafico" type="button" role="tab" aria-controls="vista-grafico" aria-selected="false">Gráfico</button>
-        </nav>
-      </div>
-      <main class="layout" id="vista-mapa" role="tabpanel" aria-labelledby="aba-mapa">
+      <main class="layout">
         <section class="mapa-card" aria-label="Mapa do Brasil">
           <div class="mapa-head">
             <p class="kicker">Estados</p>
@@ -80,7 +74,7 @@
           </section>
         </div>
       </main>
-      <section id="vista-grafico" class="grafico-card" role="tabpanel" aria-labelledby="aba-grafico" hidden>
+      <section class="grafico-card" aria-label="Evolução dos votos válidos">
         <div class="grafico-head">
           <p class="kicker">Brasil</p>
           <h2>Evolução dos votos válidos</h2>
@@ -100,8 +94,8 @@
         <p>
           Dados oficiais do TSE, arquivo de resultado unificado (EA20). Este site não é do Tribunal.
           Fonte deste recorte:
-          <a id="fonte" href="https://resultados.tse.jus.br/oficial/ele2026/6257/dados/br/br-c0001-e006257-u.json">arquivo oficial</a>.
-          <a id="link-tse" href="https://resultados.tse.jus.br/oficial/app/index.html#/eleicao/6257/uf/br/cargo/1/vis/nominal/resumo-geral">Abrir no site do TSE</a>.
+          <a id="fonte" href="https://resultados.tse.jus.br/oficial/ele2026/6258/dados/br/br-c0001-e006258-u.json">arquivo oficial</a>.
+          <a id="link-tse" href="https://resultados.tse.jus.br/oficial/app/index.html#/eleicao/6258/uf/br/cargo/1/vis/nominal/resumo-geral">Abrir no site do TSE</a>.
         </p>
       </footer>
     </div>

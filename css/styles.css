@@ -104,6 +104,11 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.pst-grande.aguardando {
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
+  letter-spacing: -0.02em;
+}
+
 .atualizacao { font-weight: 600; color: var(--text); }
 
 .dot {
@@ -121,42 +126,6 @@ h1 {
 .dot.erro { background: var(--erro); }
 
 [hidden] { display: none !important; }
-
-.nav-fixa {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  margin: 0 0 12px;
-  padding: 8px 0 6px;
-  background: rgba(8, 24, 52, 0.94);
-  backdrop-filter: blur(10px);
-}
-
-.abas {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-}
-
-.abas button {
-  min-height: 44px;
-  padding: 8px 18px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-}
-
-.abas button[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.42);
-  font-weight: 650;
-}
-
-.abas button:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-}
 
 .layout {
   display: grid;
@@ -511,6 +480,8 @@ select {
 .sw.flavio-3 { background: var(--flavio-3); }
 
 .grafico-card {
+  width: 100%;
+  margin-top: 16px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 22px;
