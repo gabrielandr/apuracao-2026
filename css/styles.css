@@ -420,6 +420,32 @@ select {
 }
 
 .map-scroll { width: 100%; }
+#mapa-locais { display: flex; flex-direction: column; gap: 8px; }
+#voltar-brasil {
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  padding: 8px 16px;
+  font-weight: 650;
+}
+#voltar-brasil:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+#locais-mapa {
+  height: min(68vh, 640px);
+  min-height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #dbe7f5;
+}
+.locais-nota { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.leaflet-popup-content { margin: 10px 14px; font-family: Outfit, "Segoe UI", sans-serif; }
+.locais-pop .locais-nome { margin: 0; font-weight: 700; color: #102033; }
+.locais-pop .locais-lugar,
+.locais-pop .locais-secoes { margin: 2px 0 0; color: #334155; }
+.locais-pop .locais-cand { margin: 4px 0 0; font-weight: 650; }
+.locais-pop .flavio { color: #0303b5; }
+.locais-pop .lula { color: #800000; }
 #mapa { width: 100%; }
 #mapa svg { width: 100%; height: auto; display: block; }
 
@@ -651,6 +677,8 @@ select {
 
 @media (max-width: 520px) {
   .shell { width: min(100% - 16px, 1180px); }
+  #locais-mapa { height: 68vh; min-height: 380px; }
+  #voltar-brasil { width: 100%; }
   .extras { grid-template-columns: 1fr; }
   .cand { grid-template-columns: 48px minmax(0, 1fr); }
   .pct { grid-column: 2; }

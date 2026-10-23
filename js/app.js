@@ -27,6 +27,12 @@
   const notaRegioes = document.getElementById("nota-regioes");
   const abaSegundo = document.getElementById("aba-segundo");
   const abaPrimeiro = document.getElementById("aba-primeiro");
+  const mapaCard = document.getElementById("mapa-card");
+  const mapaKicker = document.getElementById("mapa-kicker");
+  const mapaLocais = document.getElementById("mapa-locais");
+  const locaisMapaEl = document.getElementById("locais-mapa");
+  const locaisResumo = document.getElementById("locais-resumo");
+  const voltarBrasil = document.getElementById("voltar-brasil");
   const secaoVariacao = document.querySelector(".variacao");
   const variacaoTitulo = document.getElementById("variacao-titulo");
   const variacaoEstado = document.getElementById("variacao-estado");
@@ -827,6 +833,180 @@
     }
   }
 
+  const LOCAIS_UF = { rj: true, sp: true };
+  const locaisJson = Object.create(null);
+  let locaisMapa = null;
+  let locaisDesenhado = "";
+  let locaisPedido = 0;
+
+  function querLocais(uf) {
+    return vistaPrimeiro() && !!LOCAIS_UF[uf];
+  }
+
+  function esconderLocais() {
+    mapaLocais.hidden = true;
+    mapa.hidden = false;
+    mapaKicker.textContent = "Estados";
+    mapaCard.setAttribute("aria-label", "Mapa do Brasil");
+    if (locaisMapa) {
+      locaisMapa.remove();
+      locaisMapa = null;
+      locaisDesenhado = "";
+    }
+  }
+
+  function corLocal(flavio, lula, validos) {
+    if (!(validos > 0)) return { fill: "#f4f7fb", stroke: "#334155" };
+    const cf = model.centesimosDe(flavio, validos);
+    const cu = model.centesimosDe(lula, validos);
+    if (cf == null || cu == null) return { fill: "#f4f7fb", stroke: "#334155" };
+    const diff = Math.abs(cf - cu);
+    if (diff < 200) return { fill: "#f4f7fb", stroke: "#334155" };
+    const lado = cf > cu ? "flavio" : "lula";
+    const tom = diff >= 2000 ? "3" : diff >= 1000 ? "2" : "1";
+    const paleta = {
+      "flavio-1": "#8787fb",
+      "flavio-2": "#4040fb",
+      "flavio-3": "#0303b5",
+      "lula-1": "#c44d4d",
+      "lula-2": "#bb0b0b",
+      "lula-3": "#800000",
+    };
+    return { fill: paleta[lado + "-" + tom], stroke: "#ffffff" };
+  }
+
+  function raioLocal(votos, maximo) {
+    if (!(maximo > 0)) return 6;
+    return 5 + Math.sqrt(votos / maximo) * 11;
+  }
+
+  function popupLocal(ponto) {
+    const caixa = document.createElement("div");
+    caixa.className = "locais-pop";
+    const nome = document.createElement("p");
+    nome.className = "locais-nome";
+    nome.textContent = ponto.n || "Local de votação";
+    const lugar = document.createElement("p");
+    lugar.className = "locais-lugar";
+    lugar.textContent = [ponto.b, ponto.m].filter(Boolean).join(" · ");
+    const secoes = document.createElement("p");
+    secoes.className = "locais-secoes";
+    secoes.textContent = ponto.s + (ponto.s === 1 ? " seção" : " seções");
+    caixa.append(nome, lugar, secoes);
+    [
+      ["flavio", "Flávio", ponto.f],
+      ["lula", "Lula", ponto.u],
+    ].forEach(function (item) {
+      const linha = document.createElement("p");
+      linha.className = "locais-cand " + item[0];
+      const pct = ponto.v > 0 ? model.formatCentesimos(model.centesimosDe(item[2], ponto.v)) : "";
+      linha.textContent = item[1] + " " + model.formatInt(item[2]) + (pct ? " · " + pct : "");
+      caixa.appendChild(linha);
+    });
+    return caixa;
+  }
+
+  function desenharLocais(json) {
+    if (locaisMapa) {
+      locaisMapa.remove();
+      locaisMapa = null;
+    }
+    const pontos = (json.locais || []).filter(function (ponto) {
+      return Number.isFinite(ponto.la) && Number.isFinite(ponto.lo);
+    });
+    locaisMapaEl.dataset.pontos = String(pontos.length);
+    locaisMapaEl.replaceChildren();
+    const mapaRuas = L.map(locaisMapaEl, { preferCanvas: true, scrollWheelZoom: true, minZoom: 5, maxZoom: 18 });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(mapaRuas);
+    let maximo = 0;
+    pontos.forEach(function (ponto) {
+      if (ponto.v > maximo) maximo = ponto.v;
+    });
+    const ordem = pontos.slice().sort(function (a, b) { return b.v - a.v; });
+    ordem.forEach(function (ponto) {
+      const cor = corLocal(ponto.f, ponto.u, ponto.v);
+      const marca = L.circleMarker([ponto.la, ponto.lo], {
+        radius: raioLocal(ponto.v, maximo),
+        color: cor.stroke,
+        weight: 1,
+        fillColor: cor.fill,
+        fillOpacity: 0.92,
+      });
+      marca.on("click", function () {
+        L.popup({ maxWidth: 280, autoPan: true })
+          .setLatLng(marca.getLatLng())
+          .setContent(popupLocal(ponto))
+          .openOn(mapaRuas);
+      });
+      marca.addTo(mapaRuas);
+    });
+    locaisMapa = mapaRuas;
+    locaisMapaEl._map = mapaRuas;
+    const foraLista = json.sem || [];
+    const fora = json.semCoord || foraLista.length;
+    let texto = model.formatInt(pontos.length) + " locais de votação.";
+    if (fora) {
+      const votosFora = foraLista.reduce(function (acc, ponto) {
+        acc.f += ponto.f || 0;
+        acc.u += ponto.u || 0;
+        return acc;
+      }, { f: 0, u: 0 });
+      texto += " " + model.formatInt(fora) + (fora === 1 ? " local sem coordenada no TSE ficou fora do mapa" : " locais sem coordenada no TSE ficaram fora do mapa");
+      if (votosFora.f || votosFora.u) {
+        texto += " (Flávio " + model.formatInt(votosFora.f) + ", Lula " + model.formatInt(votosFora.u) + ")";
+      }
+      texto += ".";
+    }
+    locaisResumo.textContent = texto;
+    requestAnimationFrame(function () {
+      mapaRuas.invalidateSize();
+      if (!pontos.length) return;
+      mapaRuas.fitBounds(L.latLngBounds(pontos.map(function (ponto) { return [ponto.la, ponto.lo]; })), { padding: [18, 18], maxZoom: 12 });
+    });
+  }
+
+  async function renderLocais(uf) {
+    if (!querLocais(uf)) {
+      esconderLocais();
+      return;
+    }
+    mapa.hidden = true;
+    mapaLocais.hidden = false;
+    mapaKicker.textContent = "Locais de votação";
+    mapaCard.setAttribute("aria-label", "Locais de votação em " + (model.NOMES[uf] || uf));
+    if (locaisDesenhado === uf && locaisMapa) return;
+    const pedido = ++locaisPedido;
+    locaisResumo.textContent = "Carregando os locais de votação…";
+    if (locaisMapa) {
+      locaisMapa.remove();
+      locaisMapa = null;
+      locaisDesenhado = "";
+    }
+    if (!window.L) {
+      locaisResumo.textContent = "O mapa de ruas não carregou. Nenhum ponto foi estimado.";
+      return;
+    }
+    try {
+      if (!locaisJson[uf]) {
+        const resposta = await fetch(arquivoDados("locais/" + uf + "-1t.json"), { cache: "no-cache" });
+        if (!resposta.ok) throw new Error("HTTP " + resposta.status);
+        const json = await resposta.json();
+        if (!json || json.uf !== uf || !Array.isArray(json.locais)) throw new Error("arquivo");
+        locaisJson[uf] = json;
+      }
+    } catch (err) {
+      if (pedido !== locaisPedido) return;
+      locaisResumo.textContent = "O arquivo de locais de votação não carregou. Nenhum ponto foi estimado.";
+      return;
+    }
+    if (pedido !== locaisPedido || !querLocais(currentUf())) return;
+    desenharLocais(locaisJson[uf]);
+    locaisDesenhado = uf;
+  }
+
   function renderAbas() {
     const primeiro = vistaPrimeiro();
     abaSegundo.setAttribute("aria-selected", primeiro ? "false" : "true");
@@ -840,6 +1020,7 @@
     renderAviso();
     renderPainel(uf);
     renderMapa();
+    renderLocais(uf);
     renderRegioes();
     secaoVariacao.hidden = vistaPrimeiro();
     notaRegioes.textContent = vistaPrimeiro()
@@ -1255,6 +1436,7 @@
     preencherSeletor();
     abaSegundo.addEventListener("click", function () { abrirTurno(false); });
     abaPrimeiro.addEventListener("click", function () { abrirTurno(true); });
+    voltarBrasil.addEventListener("click", function () { selecionar("br"); });
     window.addEventListener("hashchange", render);
     hydrate();
     try {

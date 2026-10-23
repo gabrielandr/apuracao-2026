@@ -14,6 +14,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb"
+      crossorigin="anonymous"
+    />
   </head>
   <body>
     <div class="shell">
@@ -43,11 +49,19 @@
         </div>
       </header>
       <main class="layout">
-        <section class="mapa-card" aria-label="Mapa do Brasil">
+        <section class="mapa-card" id="mapa-card" aria-label="Mapa do Brasil">
           <div class="mapa-head">
-            <p class="kicker">Estados</p>
+            <p class="kicker" id="mapa-kicker">Estados</p>
           </div>
-          <div class="map-scroll"><div id="mapa"></div></div>
+          <div class="map-scroll">
+            <div id="mapa"></div>
+            <div id="mapa-locais" hidden>
+              <button id="voltar-brasil" type="button">Voltar ao mapa do Brasil</button>
+              <p id="locais-resumo" class="locais-nota"></p>
+              <div id="locais-mapa"></div>
+              <p id="locais-fonte" class="locais-nota">Fonte: TSE, boletins de urna e locais de votação. A cor segue a diferença nos votos válidos, como no mapa do Brasil. O tamanho do ponto é a quantidade de votos válidos.</p>
+            </div>
+          </div>
           <ul class="legenda">
             <li><i class="sw gelo"></i> menos de 2 pontos</li>
             <li><i class="sw lula-1"></i> Lula na frente, de 2 a 10</li>
@@ -107,6 +121,11 @@
       </footer>
     </div>
     <noscript>Este painel precisa de JavaScript para ler os arquivos públicos do TSE.</noscript>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+      integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"
+      crossorigin="anonymous"
+    ></script>
     <script src="js/config.js"></script>
     <script src="js/model.js"></script>
     <script src="js/historico.js"></script>

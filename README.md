@@ -6,6 +6,8 @@ Enquanto o arquivo do 2º turno estiver em 0% de urnas, ou ainda não puder ser 
 
 No topo, **2º turno** é a aba inicial. **1º turno** (também em `#1turno`) mostra o mapa e os cards com os arquivos oficiais da eleição 6257 e, embaixo, o gráfico nacional feito com `data/primeiro-turno-parciais.json`, a captura ArvorCo/PNAD. A consulta de 60 segundos continua no 2º turno.
 
+No 1º turno, escolher **Rio de Janeiro** ou **São Paulo** troca o mapa do Brasil por um mapa de ruas (Leaflet e tiles do OpenStreetMap) com um ponto por local de votação. A cor segue a mesma regra do mapa dos estados e o tamanho segue os votos válidos. Os arquivos são `data/locais/rj-1t.json` e `data/locais/sp-1t.json`: soma dos boletins de urna do pleito 3220 com as coordenadas de `eleitorado_local_votacao_2026` (`NR_TURNO=1`). Seção agregada não tem boletim próprio. Local sem coordenada fica fora do mapa, e a nota diz quantos. Os outros estados continuam no mapa do Brasil. `tools/crawl.py` só aceita RJ e SP.
+
 ## Voltar ao modo de teste
 
 O 1º turno fica só para conferência. Edite `js/config.js`:
