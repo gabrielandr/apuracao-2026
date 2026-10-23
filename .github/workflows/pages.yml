@@ -28,6 +28,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -a index.html css js assets _site/
+          if [ -d data ]; then cp -a data _site/data; fi
           touch _site/.nojekyll
 
       - name: Configurar o Pages

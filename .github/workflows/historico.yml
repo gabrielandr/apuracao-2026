@@ -1,0 +1,83 @@
+name: Registrar histórico da apuração
+
+on:
+  schedule:
+    # UTC. O GitHub atrasa crons; 5 minutos é o intervalo pedido.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# O mesmo grupo do Pages, para os deploys não correrem juntos.
+# Um push com GITHUB_TOKEN não dispara pages.yml, então este workflow
+# publica o site quando grava um ponto novo.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  registrar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Ler o JSON oficial do Brasil
+        id: registrar
+        run: |
+          set -euo pipefail
+          node scripts/registrar-historico.mjs | tee /tmp/historico.log
+          if grep -q '^COMMIT ' /tmp/historico.log; then
+            echo "novo=true" >> "$GITHUB_OUTPUT"
+            echo "msg=$(sed -n 's/^COMMIT //p' /tmp/historico.log | head -1)" >> "$GITHUB_OUTPUT"
+          else
+            echo "novo=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gravar o ponto na main
+        if: steps.registrar.outputs.novo == 'true'
+        env:
+          COMMIT_MSG: ${{ steps.registrar.outputs.msg }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- data/*.json
+          git commit -m "$COMMIT_MSG"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+      - name: Montar o site
+        if: steps.registrar.outputs.novo == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp -a index.html css js assets data _site/
+          touch _site/.nojekyll
+
+      - name: Configurar o Pages
+        if: steps.registrar.outputs.novo == 'true'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Enviar o artefato
+        if: steps.registrar.outputs.novo == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publicar
+        id: deployment
+        if: steps.registrar.outputs.novo == 'true'
+        uses: actions/deploy-pages@v4

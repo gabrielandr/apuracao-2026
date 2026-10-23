@@ -75,6 +75,23 @@ Não foi preciso espelhar os JSON. Se o TSE passar a bloquear CORS, o caminho gr
 
 `assets/brazil.svg` é gerado por `scripts/build-map.py` a partir do GeoJSON público [brazil-states](https://github.com/codeforamerica/click_that_hood) (malha por UF, simplificada). O mapa por município fica para depois. O Exterior (ZZ) não entra no desenho; está no seletor porque o total do Brasil inclui esses votos.
 
+## Gráfico e histórico
+
+O menu acima do mapa tem duas abas. **Mapa** é o painel atual. **Gráfico** mostra a evolução do percentual de votos válidos (`pvap`) dos dois candidatos no Brasil, um ponto por atualização do TSE. O eixo horizontal é o `pst` (urnas apuradas). O tooltip e a tabela mostram também `dg` e `hg`. A variação desde o ponto anterior, em pontos percentuais, é calculada na tela a partir desses `pvap`; ela não é gravada.
+
+Quem abre o site depois do início da apuração lê a série já publicada em `data/historico-{eleicao}.json`. O navegador acrescenta, só na memória, o ponto da leitura atual quando o `dg`+`hg` do Brasil é mais novo que o último ponto do arquivo. Não há ponto duplicado.
+
+O workflow `.github/workflows/historico.yml` roda a cada 5 minutos (o GitHub pode atrasar) e também por disparo manual. Ele baixa o JSON oficial do Brasil da eleição de `js/config.js`. Se o horário `dg`+`hg` mudou, acrescenta um ponto com `dg`, `hg`, `pst` e, para cada candidato, `nome`, `pvap` e `vap`, grava na `main` e publica o Pages de novo. Um push feito pelo `GITHUB_TOKEN` não dispara o outro workflow, por isso este já faz o deploy. Enquanto o horário não muda, o workflow não cria commit.
+
+Não existe série histórica oficial do 1º turno. O primeiro ponto real é o arquivo congelado da eleição configurada. No 2º turno, troque `js/config.js` para `6258` / `runoff`: a série passa a ser `data/historico-6258.json` e o cron, que já fica ativo, só começa a acumular pontos quando o TSE mudar `dg` ou `hg`.
+
+```bash
+node scripts/historico.test.mjs
+node scripts/registrar-historico.mjs --dry-run
+```
+
+O teste usa uma sequência marcada como `EXEMPLO — não é série oficial` e não grava `data/`. O `--dry-run` só imprime o ponto real.
+
 ## Publicação
 
 O workflow `.github/workflows/pages.yml` publica a branch `main` no GitHub Pages. O source tem de ser **GitHub Actions**. A URL do projeto é:

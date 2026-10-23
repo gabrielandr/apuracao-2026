@@ -18,8 +18,22 @@
   const fonte = document.getElementById("fonte");
   const linkTse = document.getElementById("link-tse");
   const dot = document.getElementById("dot");
+  const abaMapa = document.getElementById("aba-mapa");
+  const abaGrafico = document.getElementById("aba-grafico");
+  const vistaMapa = document.getElementById("vista-mapa");
+  const vistaGrafico = document.getElementById("vista-grafico");
+  const graficoEl = document.getElementById("grafico");
+  const graficoLegenda = document.getElementById("grafico-legenda");
+  const graficoTabela = document.getElementById("grafico-tabela");
+  const graficoOrigem = document.getElementById("grafico-origem");
+  const graficoLeitura = document.getElementById("grafico-leitura");
 
+  const historicoApi = window.ApuracaoHistorico;
+  const graficoApi = window.ApuracaoGrafico;
   const memory = Object.create(null);
+  let historicoArquivo = [];
+  let historicoEstado = "vazio";
+  let ufMemoria = "br";
   let inflight = false;
   let lastAttemptOk = false;
   let failedUfs = [];
@@ -63,11 +77,29 @@
     return entry && entry.json ? model.parseScope(entry.json) : null;
   }
 
+  function hashLimpo() {
+    return location.hash.replace(/^#\/?/, "").toLowerCase();
+  }
+
+  function abaAtual() {
+    return hashLimpo() === "grafico" ? "grafico" : "mapa";
+  }
+
   function currentUf() {
-    const hash = location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (abaAtual() === "grafico") return ufMemoria;
+    const hash = hashLimpo();
     if (!hash || hash === "br" || hash === "brasil") return "br";
     if (hash === "zz" || model.UFS.indexOf(hash) !== -1) return hash;
     return "br";
+  }
+
+  function arquivoHistorico() {
+    let path = location.pathname;
+    if (!path.endsWith("/")) {
+      if (path.split("/").pop().indexOf(".") !== -1) path = path.replace(/\/[^/]*$/, "/");
+      else path += "/";
+    }
+    return path + "data/historico-" + config.code + ".json";
   }
 
   function pairNacional() {
@@ -110,19 +142,48 @@
     }
   }
 
+  async function carregarHistorico() {
+    try {
+      const response = await fetch(arquivoHistorico(), { cache: "no-cache" });
+      if (response.status === 404) {
+        if (historicoEstado !== "ok") {
+          historicoArquivo = [];
+          historicoEstado = "ausente";
+        }
+        return;
+      }
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const json = await response.json();
+      if (!json || String(json.eleicao) !== String(config.code)) throw new Error("eleição");
+      historicoArquivo = historicoApi.normalizar(json.pontos || []);
+      historicoEstado = "ok";
+    } catch (err) {
+      if (historicoEstado !== "ok") historicoEstado = "erro";
+    }
+  }
+
+  function serieBrasil() {
+    const brasil = scopeOf("br");
+    const aoVivo = brasil ? historicoApi.pontoOficial(brasil, pairNacional()) : null;
+    return historicoApi.mesclar(historicoArquivo, aoVivo);
+  }
+
   async function loadAll() {
     if (inflight) return;
     inflight = true;
     const alvos = ["br"].concat(model.UFS, ["zz"]);
     if (!scopeOf("br")) setAviso("Carregando os arquivos oficiais do TSE…", "info");
     try {
-      const results = await Promise.all(
-        alvos.map(function (uf) {
-          return loadOne(uf).then(function (ok) {
-            return { uf: uf, ok: ok };
-          });
-        })
-      );
+      const [results] = await Promise.all([
+        Promise.all(
+          alvos.map(function (uf) {
+            return loadOne(uf).then(function (ok) {
+              return { uf: uf, ok: ok };
+            });
+          })
+        ),
+        carregarHistorico(),
+      ]);
       failedUfs = results
         .filter(function (item) {
           return !item.ok;
@@ -379,15 +440,185 @@
     });
   }
 
+  function renderAbas() {
+    const grafico = abaAtual() === "grafico";
+    abaMapa.setAttribute("aria-selected", grafico ? "false" : "true");
+    abaGrafico.setAttribute("aria-selected", grafico ? "true" : "false");
+    vistaMapa.hidden = grafico;
+    vistaGrafico.hidden = !grafico;
+  }
+
+  function renderLegenda(anotados) {
+    graficoLegenda.replaceChildren();
+    if (!anotados.length) return;
+    anotados[anotados.length - 1].candidatos.forEach(function (cand) {
+      const li = document.createElement("li");
+      const marca = document.createElement("i");
+      marca.style.background = graficoApi.CORES[cand.lado] || graficoApi.CORES.outro;
+      const nome = document.createElement("span");
+      nome.textContent = cand.nome;
+      nome.style.color = graficoApi.CORES[cand.lado] || graficoApi.CORES.outro;
+      const pct = document.createElement("strong");
+      pct.textContent = model.formatPct(cand.pvap);
+      const variacao = document.createElement("span");
+      variacao.className = "variacao";
+      variacao.textContent = cand.primeiro ? "primeiro ponto" : cand.delta;
+      li.append(marca, nome, pct, variacao);
+      graficoLegenda.appendChild(li);
+    });
+  }
+
+  function nomesDaSerie(anotados) {
+    const nomes = [];
+    anotados.forEach(function (ponto) {
+      ponto.candidatos.forEach(function (cand) {
+        const id = cand.lado !== "outro" ? cand.lado : cand.nome;
+        let slot = nomes.find(function (item) { return item.id === id; });
+        if (!slot) {
+          slot = { id: id, lado: cand.lado, nome: cand.nome };
+          nomes.push(slot);
+        }
+        slot.nome = cand.nome;
+      });
+    });
+    return nomes;
+  }
+
+  function celula(texto) {
+    const td = document.createElement("td");
+    td.textContent = texto;
+    return td;
+  }
+
+  function renderTabela(anotados) {
+    const caption = graficoTabela.querySelector("caption");
+    graficoTabela.replaceChildren();
+    if (caption) graficoTabela.appendChild(caption);
+    if (!anotados.length) return;
+    const nomes = nomesDaSerie(anotados);
+    const thead = document.createElement("thead");
+    const linha1 = document.createElement("tr");
+    ["Horário do TSE", "Urnas apuradas"].forEach(function (rotulo) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.rowSpan = 2;
+      th.textContent = rotulo;
+      linha1.appendChild(th);
+    });
+    nomes.forEach(function (item) {
+      const th = document.createElement("th");
+      th.scope = "colgroup";
+      th.colSpan = 3;
+      th.textContent = item.nome;
+      th.style.color = graficoApi.CORES[item.lado] || graficoApi.CORES.outro;
+      linha1.appendChild(th);
+    });
+    const linha2 = document.createElement("tr");
+    nomes.forEach(function () {
+      ["Votos válidos", "Variação", "Votos"].forEach(function (rotulo) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = rotulo;
+        linha2.appendChild(th);
+      });
+    });
+    thead.append(linha1, linha2);
+    const tbody = document.createElement("tbody");
+    anotados.forEach(function (ponto) {
+      const tr = document.createElement("tr");
+      tr.append(
+        celula(ponto.dg + " " + ponto.hg),
+        celula(model.formatPct(ponto.pst))
+      );
+      nomes.forEach(function (item) {
+        const cand = ponto.candidatos.find(function (c) {
+          return (c.lado !== "outro" ? c.lado : c.nome) === item.id;
+        });
+        if (!cand) {
+          tr.append(celula("—"), celula("—"), celula("—"));
+          return;
+        }
+        tr.append(
+          celula(model.formatPct(cand.pvap)),
+          celula(cand.primeiro ? "primeiro ponto" : cand.delta || "—"),
+          celula(model.formatInt(cand.vap))
+        );
+      });
+      tbody.appendChild(tr);
+    });
+    graficoTabela.append(thead, tbody);
+  }
+
+  function renderGrafico() {
+    const pontos = serieBrasil();
+    const anotados = historicoApi.anotar(pontos, model.ladoDe);
+    renderLegenda(anotados);
+    graficoApi.desenhar(graficoEl, anotados, model.formatPct);
+    renderTabela(anotados);
+    const ultimo = pontos[pontos.length - 1];
+    if (ultimo) {
+      graficoLeitura.textContent =
+        "Última atualização do TSE: " +
+        ultimo.dg +
+        " às " +
+        ultimo.hg +
+        " · " +
+        model.formatPct(ultimo.pst) +
+        " das urnas";
+    } else {
+      graficoLeitura.textContent = "";
+    }
+    const publicado = ultimo && historicoArquivo.some(function (item) {
+      return historicoApi.chave(item) === historicoApi.chave(ultimo);
+    });
+    if (!pontos.length) {
+      graficoOrigem.hidden = false;
+      graficoOrigem.textContent = "Ainda não há atualização oficial do Brasil para desenhar a série.";
+    } else if (historicoEstado === "erro" && !historicoArquivo.length) {
+      graficoOrigem.hidden = false;
+      graficoOrigem.textContent = "Não foi possível ler o histórico publicado. O gráfico mostra a leitura atual do TSE.";
+    } else if (historicoEstado === "ausente") {
+      graficoOrigem.hidden = false;
+      graficoOrigem.textContent = "O histórico publicado ainda não tem arquivo. O gráfico mostra a leitura atual do TSE.";
+    } else if (ultimo && !publicado) {
+      graficoOrigem.hidden = false;
+      graficoOrigem.textContent = "O último ponto é a leitura atual do TSE e ainda não entrou no histórico publicado.";
+    } else {
+      graficoOrigem.hidden = true;
+      graficoOrigem.textContent = "";
+    }
+  }
+
   function render() {
+    const aba = abaAtual();
+    renderAbas();
     renderAviso();
-    renderPainel(currentUf());
+    if (aba === "grafico") {
+      renderPainel("br");
+      voltar.hidden = true;
+      renderGrafico();
+    } else {
+      renderPainel(currentUf());
+    }
     renderMapa();
   }
 
   function selecionar(uf) {
+    ufMemoria = uf;
     const destino = "#/" + uf;
     if (location.hash !== destino) location.hash = destino;
+    else render();
+  }
+
+  function abrirAba(aba) {
+    if (aba === "grafico") {
+      if (abaAtual() !== "grafico") ufMemoria = currentUf();
+      if (hashLimpo() !== "grafico") location.hash = "#/grafico";
+      else render();
+      return;
+    }
+    const destino = "#/" + (ufMemoria || "br");
+    if (location.hash.toLowerCase() !== destino) location.hash = destino;
     else render();
   }
 
@@ -428,7 +659,17 @@
   }
 
   async function init() {
+    const hashInicial = hashLimpo();
+    if (hashInicial && hashInicial !== "grafico") {
+      ufMemoria = hashInicial === "zz" || model.UFS.indexOf(hashInicial) !== -1 ? hashInicial : "br";
+    }
     preencherSeletor();
+    abaMapa.addEventListener("click", function () {
+      abrirAba("mapa");
+    });
+    abaGrafico.addEventListener("click", function () {
+      abrirAba("grafico");
+    });
     voltar.addEventListener("click", function () {
       selecionar("br");
     });

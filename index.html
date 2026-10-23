@@ -35,8 +35,12 @@
           <p id="consulta" class="consulta"></p>
         </div>
       </header>
+      <nav class="abas" aria-label="Visualização">
+        <button id="aba-mapa" type="button" role="tab" aria-controls="vista-mapa" aria-selected="true">Mapa</button>
+        <button id="aba-grafico" type="button" role="tab" aria-controls="vista-grafico" aria-selected="false">Gráfico</button>
+      </nav>
       <button id="voltar" class="voltar" type="button" hidden>Voltar ao Brasil</button>
-      <main class="layout">
+      <main class="layout" id="vista-mapa" role="tabpanel" aria-labelledby="aba-mapa">
         <section class="painel" aria-label="Candidatos">
           <div id="painel">
             <p class="vazio">Aguardando o arquivo oficial.</p>
@@ -63,6 +67,22 @@
           </ul>
         </section>
       </main>
+      <section id="vista-grafico" class="grafico-card" role="tabpanel" aria-labelledby="aba-grafico" hidden>
+        <div class="grafico-head">
+          <p class="kicker">Brasil</p>
+          <h2>Evolução dos votos válidos</h2>
+          <p class="nota">Um ponto a cada atualização do TSE. O eixo horizontal é o percentual de urnas apuradas; o horário de Brasília aparece no tooltip e na tabela.</p>
+          <p id="grafico-leitura" class="sub"></p>
+        </div>
+        <ul id="grafico-legenda" class="legenda-linhas"></ul>
+        <p id="grafico-origem" class="nota" hidden></p>
+        <div id="grafico" class="grafico-canvas"></div>
+        <div class="tabela-scroll">
+          <table id="grafico-tabela">
+            <caption>Série oficial do Brasil</caption>
+          </table>
+        </div>
+      </section>
       <footer class="rodape">
         <p>
           Dados oficiais do TSE, arquivo de resultado unificado (EA20). Este site não é do Tribunal.
@@ -75,6 +95,8 @@
     <noscript>Este painel precisa de JavaScript para ler os arquivos públicos do TSE.</noscript>
     <script src="js/config.js"></script>
     <script src="js/model.js"></script>
+    <script src="js/historico.js"></script>
+    <script src="js/grafico.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>
