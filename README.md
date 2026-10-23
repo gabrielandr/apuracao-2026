@@ -77,9 +77,17 @@ Não foi preciso espelhar os JSON. Se o TSE passar a bloquear CORS, o caminho gr
 
 ## Publicação
 
-O workflow `.github/workflows/pages.yml` publica a branch `main` no GitHub Pages com o source **GitHub Actions**. O site fica em:
+O workflow `.github/workflows/pages.yml` publica a branch `main` no GitHub Pages. O source tem de ser **GitHub Actions**. A URL do projeto é:
 
 https://gabrielandr.github.io/apuracao-2026/
+
+O token usado no push consegue gravar na `main`, mas não tem permissão de administração do repositório. Por isso a criação do site Pages responde `Resource not accessible by integration` e o workflow para no passo "Configurar o Pages" até alguém com acesso de admin fazer isto uma vez:
+
+1. Abrir https://github.com/gabrielandr/apuracao-2026/settings/pages
+2. Em **Build and deployment**, escolher **Source: GitHub Actions** e salvar.
+3. Reexecutar o workflow em https://github.com/gabrielandr/apuracao-2026/actions
+
+Com o site já existente, o workflow segue sozinho a cada push na `main`. O passo `enablement: true` tenta criar o site; sem a permissão `administration:write` essa criação falha, e passa a funcionar assim que o site existir.
 
 ## Conferência local
 
