@@ -308,6 +308,54 @@
     return text + "%";
   }
 
+  function pvapCentesimos(oficial) {
+    const valor = num(oficial);
+    if (valor == null) return null;
+    return Math.round(valor * 100);
+  }
+
+  function formatPontos(delta) {
+    if (delta == null) return "";
+    const corpo = formatCentesimos(Math.abs(delta)).replace("%", "");
+    if (delta > 0) return "+" + corpo + " p.p.";
+    if (delta < 0) return "−" + corpo + " p.p.";
+    return "0,00 p.p.";
+  }
+
+  function variacaoTurno(entrada) {
+    const code = String((entrada && entrada.code) || "");
+    const numeros = (entrada && entrada.numeros) || [];
+    const atuais = (entrada && entrada.atuais) || [];
+    const base = (entrada && entrada.base) || [];
+    const pstN = entrada ? entrada.pstN : null;
+    let situacao = "apurando";
+    if (code !== "6258") situacao = "antes";
+    else if (pstN == null || pstN <= 0) situacao = "aguardando";
+    const linhas = numeros.map(function (numero) {
+      const n = String(numero);
+      const atual = atuais.find(function (c) { return c && String(c.n) === n; }) || null;
+      const anterior = base.find(function (c) { return c && String(c.n) === n; }) || null;
+      const pvapAtual = atual && atual.pvap != null && atual.pvap !== "" ? String(atual.pvap) : "";
+      const pvapPrimeiro = situacao === "antes"
+        ? pvapAtual
+        : (anterior && anterior.pvap != null && anterior.pvap !== "" ? String(anterior.pvap) : "");
+      let delta = null;
+      if (situacao === "apurando" && pvapAtual && pvapPrimeiro) {
+        const origem = pvapCentesimos(pvapPrimeiro);
+        const agora = pvapCentesimos(pvapAtual);
+        if (origem != null && agora != null) delta = agora - origem;
+      }
+      return {
+        n: n,
+        pvapAtual: situacao === "apurando" ? pvapAtual : "",
+        pvapPrimeiro: pvapPrimeiro,
+        delta: delta,
+        sinal: delta == null ? "" : delta > 0 ? "alta" : delta < 0 ? "queda" : "neutro",
+      };
+    });
+    return { situacao: situacao, linhas: linhas };
+  }
+
   return {
     UFS: UFS,
     NOMES: NOMES,
@@ -327,5 +375,8 @@
     centesimosDe: centesimosDe,
     formatCentesimos: formatCentesimos,
     agregarRegiao: agregarRegiao,
+    pvapCentesimos: pvapCentesimos,
+    formatPontos: formatPontos,
+    variacaoTurno: variacaoTurno,
   };
 });

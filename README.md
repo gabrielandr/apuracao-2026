@@ -59,6 +59,8 @@ O diretório está no `ele-c.json`, tipo `u`: `<base>/<ambiente>/<ciclo>/<cd_ele
 
 O card **Por região**, na aba Mapa, soma o `vap` de cada candidato nas UFs da região e divide pela soma de `v.vv` (votos válidos) dessas UFs. O percentual de urnas é a soma de `s.st` dividida pela soma de `s.ts`. Não é média de percentuais. O Exterior (ZZ) fica de fora. O TSE não publica esse recorte.
 
+O card **Variação vs 1º turno** compara o `pvap` do recorte selecionado com o `pvap` da eleição 6257 na mesma UF. O candidato é o número `22` ou `13`. Enquanto o site estiver no 1º turno, o card avisa que o 2º turno não começou. No arquivo da 6258 com 0% de urnas, o card diz que a apuração ainda não começou. `data/primeiro-turno.json` guarda só `dg`, `hg`, `pst` e, para esses dois números, `n`, `nome`, `pvap` e `vap`.
+
 A cor do estado é a diferença, em pontos percentuais, entre o `pvapn` desses dois candidatos:
 
 - menos de 2: branco `#ffffff`

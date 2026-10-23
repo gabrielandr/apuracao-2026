@@ -122,10 +122,20 @@ h1 {
 
 [hidden] { display: none !important; }
 
+.nav-fixa {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: 0 0 12px;
+  padding: 8px 0 6px;
+  background: rgba(8, 24, 52, 0.94);
+  backdrop-filter: blur(10px);
+}
+
 .abas {
   display: flex;
   gap: 8px;
-  margin: 0 0 14px;
+  margin: 0;
 }
 
 .abas button {
@@ -149,7 +159,7 @@ h1 {
 }
 
 .voltar {
-  margin: 0 0 12px;
+  margin: 8px 0 0;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
@@ -161,14 +171,16 @@ h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 400px);
   gap: 16px;
   align-items: start;
 }
 
 .coluna { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.painel, .mapa-card, .regioes {
+.mapa-card { min-width: 0; }
+
+.painel, .mapa-card, .regioes, .variacao {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -176,7 +188,43 @@ h1 {
   backdrop-filter: blur(8px);
 }
 
-.regioes { padding: 12px 14px 14px; }
+.regioes, .variacao { padding: 12px 14px 14px; }
+
+.variacao-estado {
+  margin: 0 0 10px;
+  font-weight: 650;
+}
+
+.var-item + .var-item {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.var-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.var-nome { font-weight: 700; }
+.var-pct { font-weight: 700; font-size: 1.2rem; }
+
+.delta { font-weight: 700; font-variant-numeric: tabular-nums; }
+.delta.alta { color: #3dd68c; }
+.delta.queda { color: #ff8d8d; }
+.delta.neutro { color: var(--muted); }
+
+.var-base {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
 
 #lista-regioes {
   list-style: none;
@@ -194,6 +242,7 @@ h1 {
   margin: 0;
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .regiao-nome { font-weight: 700; }

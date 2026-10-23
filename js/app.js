@@ -27,12 +27,15 @@
   const graficoTabela = document.getElementById("grafico-tabela");
   const graficoOrigem = document.getElementById("grafico-origem");
   const graficoLeitura = document.getElementById("grafico-leitura");
+  const variacaoEstado = document.getElementById("variacao-estado");
+  const variacaoLista = document.getElementById("variacao-lista");
 
   const historicoApi = window.ApuracaoHistorico;
   const graficoApi = window.ApuracaoGrafico;
   const memory = Object.create(null);
   let historicoArquivo = [];
   let historicoEstado = "vazio";
+  let primeiroTurno = null;
   let ufMemoria = "br";
   let inflight = false;
   let lastAttemptOk = false;
@@ -93,13 +96,29 @@
     return "br";
   }
 
-  function arquivoHistorico() {
+  function arquivoDados(nome) {
     let path = location.pathname;
     if (!path.endsWith("/")) {
       if (path.split("/").pop().indexOf(".") !== -1) path = path.replace(/\/[^/]*$/, "/");
       else path += "/";
     }
-    return path + "data/historico-" + config.code + ".json";
+    return path + "data/" + nome;
+  }
+
+  function arquivoHistorico() {
+    return arquivoDados("historico-" + config.code + ".json");
+  }
+
+  async function carregarPrimeiroTurno() {
+    try {
+      const response = await fetch(arquivoDados("primeiro-turno.json"), { cache: "no-cache" });
+      if (!response.ok) return;
+      const json = await response.json();
+      if (!json || String(json.eleicao) !== "6257" || !json.recortes) return;
+      primeiroTurno = json;
+    } catch (err) {
+      primeiroTurno = null;
+    }
   }
 
   function pairNacional() {
@@ -602,6 +621,77 @@
     }
     renderMapa();
     renderRegioes();
+    renderVariacao(aba === "grafico" ? ufMemoria : currentUf());
+  }
+
+  function nomeDoNumero(n, fallback) {
+    if (String(n) === "22") return "Flávio";
+    if (String(n) === "13") return "Lula";
+    return fallback || "Candidato " + n;
+  }
+
+  function renderVariacao(uf) {
+    variacaoLista.replaceChildren();
+    const scope = scopeOf(uf);
+    if (!scope) {
+      variacaoEstado.textContent = "Aguardando o arquivo oficial.";
+      return;
+    }
+    const pair = pairNacional();
+    const numeros = pair.map(function (cand) { return String(cand.n); }).filter(Boolean);
+    const atuais = (scope ? scope.candidates : []).filter(function (cand) {
+      return numeros.indexOf(String(cand.n)) !== -1;
+    }).map(function (cand) {
+      return { n: String(cand.n), pvap: cand.pvap };
+    });
+    const recorte = primeiroTurno && primeiroTurno.recortes ? primeiroTurno.recortes[uf] : null;
+    const base = recorte && recorte.candidatos ? recorte.candidatos : [];
+    const resultado = model.variacaoTurno({
+      code: config.code,
+      pstN: scope ? scope.pstN : null,
+      numeros: numeros,
+      atuais: atuais,
+      base: base,
+    });
+    if (resultado.situacao === "antes") {
+      variacaoEstado.textContent = "O 2º turno ainda não começou.";
+    } else if (resultado.situacao === "aguardando") {
+      variacaoEstado.textContent = "Aguardando apuração.";
+    } else if (!numeros.length) {
+      variacaoEstado.textContent = "Aguardando os candidatos oficiais.";
+    } else {
+      variacaoEstado.textContent = "";
+    }
+    variacaoEstado.hidden = !variacaoEstado.textContent;
+    resultado.linhas.forEach(function (linha) {
+      const bloco = document.createElement("div");
+      bloco.className = "var-item";
+      const topo = document.createElement("p");
+      topo.className = "var-linha";
+      const nome = document.createElement("span");
+      nome.className = "var-nome";
+      nome.textContent = nomeDoNumero(linha.n);
+      topo.appendChild(nome);
+      if (linha.pvapAtual) {
+        const pct = document.createElement("span");
+        pct.className = "var-pct";
+        pct.textContent = model.formatPct(linha.pvapAtual);
+        topo.appendChild(pct);
+      }
+      if (linha.delta != null) {
+        const delta = document.createElement("span");
+        delta.className = "delta " + linha.sinal;
+        delta.textContent = model.formatPontos(linha.delta);
+        topo.appendChild(delta);
+      }
+      const baseLinha = document.createElement("p");
+      baseLinha.className = "var-base";
+      baseLinha.textContent = linha.pvapPrimeiro
+        ? "1º turno: " + model.formatPct(linha.pvapPrimeiro)
+        : "1º turno: sem dado oficial deste recorte";
+      bloco.append(topo, baseLinha);
+      variacaoLista.appendChild(bloco);
+    });
   }
 
   function nomeCurto(cand) {
@@ -734,7 +824,8 @@
       mapa.innerHTML = '<p class="vazio">Não foi possível carregar o mapa.</p>';
     }
     if (scopeOf("br")) render();
-    await loadAll();
+    await Promise.all([loadAll(), carregarPrimeiroTurno()]);
+    render();
     setInterval(loadAll, config.pollMs);
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") loadAll();
