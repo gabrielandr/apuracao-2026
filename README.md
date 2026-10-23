@@ -59,7 +59,9 @@ O diretório está no `ele-c.json`, tipo `u`: `<base>/<ambiente>/<ciclo>/<cd_ele
 
 O card **Por região** soma o `vap` de cada candidato nas UFs da região e divide pela soma de `v.vv` (votos válidos) dessas UFs. O percentual de urnas é a soma de `s.st` dividida pela soma de `s.ts`. Não é média de percentuais. O Exterior (ZZ) fica de fora. O TSE não publica esse recorte.
 
-O card **Variação vs 1º turno** compara o `pvap` do recorte selecionado com o `pvap` da eleição 6257 na mesma UF. O candidato é o número `22` ou `13`. No arquivo da 6258 com 0% de urnas, o card diz que a apuração ainda não começou e mostra o percentual do 1º turno só nessa comparação. `data/primeiro-turno.json` guarda só `dg`, `hg`, `pst` e, para esses dois números, `n`, `nome`, `pvap` e `vap`.
+O card **Variação vs 1º turno** compara o percentual do 2º turno com o 1º turno na mesma % de urnas apuradas. No Brasil, o `pst` é o do arquivo nacional. Num estado, a conta é a da região (Norte, Nordeste, Centro-Oeste, Sudeste ou Sul): urnas são a soma de `s.st` sobre a soma de `s.ts`, e o percentual é a soma dos votos sobre a soma de `v.vv`. O ponto do 1º turno é o de `pst` mais próximo. A diferença é o percentual do 2º turno menos o daquele ponto, em pontos percentuais. Em 100% das urnas, isso coincide com o final contra o final.
+
+As parciais do 1º turno estão em `data/primeiro-turno-parciais.json` (só `pst`, percentual do Flávio e percentual do Lula, em centésimos). Saem de uma captura de terceiros dos arquivos oficiais do TSE, feita pela ArvorCo/PNAD: versões do arquivo do Brasil e, por região, a soma minuto a minuto das UFs, sem o Exterior. O percentual é votos do candidato divididos pelos votos válidos. O fim da série bate com `data/primeiro-turno.json`. A ordem em que as urnas entram muda de um turno para o outro, então a comparação é uma aproximação. Com 0% de urnas o card não mostra número. `?simular=1` só testa essa conta, tratando um ponto do 1º turno perto de 50% como se fosse o 2º; sem o parâmetro, a página não simula.
 
 A cor do estado é a diferença, em pontos percentuais, entre o `pvapn` desses dois candidatos:
 

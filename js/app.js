@@ -22,8 +22,10 @@
   const graficoTabela = document.getElementById("grafico-tabela");
   const graficoOrigem = document.getElementById("grafico-origem");
   const graficoLeitura = document.getElementById("grafico-leitura");
+  const variacaoTitulo = document.getElementById("variacao-titulo");
   const variacaoEstado = document.getElementById("variacao-estado");
   const variacaoLista = document.getElementById("variacao-lista");
+  const simulacaoEl = document.getElementById("simulacao");
 
   const historicoApi = window.ApuracaoHistorico;
   const graficoApi = window.ApuracaoGrafico;
@@ -31,6 +33,7 @@
   let historicoArquivo = [];
   let historicoEstado = "vazio";
   let primeiroTurno = null;
+  let parciais = null;
   let inflight = false;
   let lastAttemptOk = false;
   let failedUfs = [];
@@ -96,6 +99,36 @@
 
   function arquivoHistorico() {
     return arquivoDados("historico-" + config.code + ".json");
+  }
+
+  function simulacaoAtiva() {
+    const valor = new URLSearchParams(location.search).get("simular");
+    if (valor == null) return false;
+    const texto = valor.trim().toLowerCase();
+    return texto !== "" && texto !== "0" && texto !== "off" && texto !== "nao" && texto !== "não";
+  }
+
+  function atualizarSimulacao() {
+    if (!simulacaoAtiva()) {
+      simulacaoEl.hidden = true;
+      simulacaoEl.textContent = "";
+      return;
+    }
+    simulacaoEl.hidden = false;
+    simulacaoEl.textContent =
+      "Simulação: a comparação trata um ponto do 1º turno, perto de 50% das urnas, como se fosse o 2º. Não é a apuração oficial. O mapa e os candidatos seguem o arquivo do TSE.";
+  }
+
+  async function carregarParciais() {
+    try {
+      const response = await fetch(arquivoDados("primeiro-turno-parciais.json"), { cache: "no-cache" });
+      if (!response.ok) return;
+      const json = await response.json();
+      if (!json || String(json.eleicao) !== "6257" || !json.serie || !json.serie.br) return;
+      parciais = json;
+    } catch (err) {
+      parciais = null;
+    }
   }
 
   async function carregarPrimeiroTurno() {
@@ -628,10 +661,141 @@
     return fallback || "Candidato " + n;
   }
 
+  function serieParcial(id) {
+    return parciais && parciais.serie ? parciais.serie[id] : null;
+  }
+
+  function sinalDe(delta) {
+    if (delta == null) return "";
+    if (delta > 0) return "alta";
+    if (delta < 0) return "queda";
+    return "neutro";
+  }
+
+  function comparacaoSimulada(id) {
+    const serie = serieParcial(id);
+    const ponto = model.pontoMaisProximo(serie, 5000);
+    if (!ponto) return null;
+    return model.compararMesmaApuracao(serie, ponto.pst, ponto.flavio, ponto.lula);
+  }
+
+  function comparacaoRealBrasil() {
+    const scope = scopeOf("br");
+    if (!apurando(scope)) return null;
+    const pair = pairNoEscopo("br");
+    const flavio = pair.find(function (cand) { return cand && (cand.lado === "flavio" || String(cand.n) === "22"); });
+    const lula = pair.find(function (cand) { return cand && (cand.lado === "lula" || String(cand.n) === "13"); });
+    if (!flavio || !lula) return null;
+    return model.compararMesmaApuracao(
+      serieParcial("br"),
+      model.pvapCentesimos(scope.pst),
+      model.pvapCentesimos(flavio.pvap),
+      model.pvapCentesimos(lula.pvap)
+    );
+  }
+
+  function regiaoEmApuracao(regiao) {
+    const item = model.agregarRegiao(regiao, regiao.ufs.map(function (id) { return scopeOf(id); }), pairNacional());
+    return !!(item.completa && item.urnasCentesimos > 0);
+  }
+
+  function comparacaoRealRegiao(regiao) {
+    const pair = pairNacional();
+    const scopes = regiao.ufs.map(function (id) { return scopeOf(id); });
+    const item = model.agregarRegiao(regiao, scopes, pair);
+    if (!item.completa || !(item.urnasCentesimos > 0)) return null;
+    const flavio = item.candidatos.find(function (cand) { return cand.lado === "flavio"; });
+    const lula = item.candidatos.find(function (cand) { return cand.lado === "lula"; });
+    if (!flavio || !lula) return null;
+    return model.compararMesmaApuracao(serieParcial(regiao.id), item.urnasCentesimos, flavio.centesimos, lula.centesimos);
+  }
+
+  function acrescentarDelta(destino, delta) {
+    if (delta == null) return;
+    const span = document.createElement("span");
+    span.className = "delta " + sinalDe(delta);
+    span.textContent = model.formatPontos(delta);
+    destino.appendChild(span);
+  }
+
+  function renderComparacao(cmp) {
+    [
+      ["22", cmp.flavio, cmp.deltaFlavio, cmp.base.flavio],
+      ["13", cmp.lula, cmp.deltaLula, cmp.base.lula],
+    ].forEach(function (item) {
+      const bloco = document.createElement("div");
+      bloco.className = "var-item";
+      const topo = document.createElement("p");
+      topo.className = "var-linha";
+      const nome = document.createElement("span");
+      nome.className = "var-nome";
+      nome.textContent = nomeDoNumero(item[0]);
+      const pct = document.createElement("span");
+      pct.className = "var-pct";
+      pct.textContent = model.formatCentesimos(item[1]);
+      topo.append(nome, pct);
+      acrescentarDelta(topo, item[2]);
+      const base = document.createElement("p");
+      base.className = "var-base";
+      base.textContent =
+        "1º turno em " +
+        model.formatCentesimos(cmp.base.pst) +
+        " das urnas: " +
+        model.formatCentesimos(item[3]);
+      bloco.append(topo, base);
+      variacaoLista.appendChild(bloco);
+    });
+  }
+
   function renderVariacao(uf) {
     variacaoLista.replaceChildren();
+    atualizarSimulacao();
+    if (uf === "zz") {
+      variacaoTitulo.textContent = "Variação vs 1º turno";
+      variacaoEstado.hidden = false;
+      variacaoEstado.textContent = "O Exterior não entra nesta comparação.";
+      return;
+    }
+    if (!simulacaoAtiva() && String(config.code) !== "6258") {
+      variacaoTitulo.textContent = "Variação vs 1º turno";
+      renderVariacaoFinal(uf);
+      return;
+    }
+    const regiao = uf === "br" ? null : model.regiaoDe(uf);
+    const nome = uf === "br" ? "Brasil" : regiao ? regiao.nome : "";
+    const contando = simulacaoAtiva() || (uf === "br" ? apurando(scopeOf("br")) : !!(regiao && regiaoEmApuracao(regiao)));
+    if (!nome || !contando) {
+      variacaoTitulo.textContent = "Variação vs 1º turno";
+      variacaoEstado.hidden = false;
+      variacaoEstado.textContent = !simulacaoAtiva() && !scopeOf(uf === "br" ? "br" : uf) ? "Aguardando o arquivo oficial." : "Aguardando apuração.";
+      return;
+    }
+    if (!parciais) {
+      variacaoTitulo.textContent = "Variação · " + nome + " (mesma % apurada)";
+      variacaoEstado.hidden = false;
+      variacaoEstado.textContent = "A série do 1º turno não carregou.";
+      return;
+    }
+    const cmp = simulacaoAtiva()
+      ? comparacaoSimulada(uf === "br" ? "br" : regiao.id)
+      : uf === "br"
+        ? comparacaoRealBrasil()
+        : comparacaoRealRegiao(regiao);
+    variacaoTitulo.textContent = "Variação · " + nome + " (mesma % apurada)";
+    if (!cmp) {
+      variacaoEstado.hidden = false;
+      variacaoEstado.textContent = "Aguardando apuração.";
+      return;
+    }
+    variacaoEstado.hidden = false;
+    variacaoEstado.textContent = "2º turno com " + model.formatCentesimos(cmp.pst) + " das urnas";
+    renderComparacao(cmp);
+  }
+
+  function renderVariacaoFinal(uf) {
     const scope = scopeOf(uf);
     if (!scope) {
+      variacaoEstado.hidden = false;
       variacaoEstado.textContent = "Aguardando o arquivo oficial.";
       return;
     }
@@ -698,9 +862,69 @@
     return cand.nome;
   }
 
+  function appendVs(li, cmp) {
+    if (!cmp) return;
+    const p = document.createElement("p");
+    p.className = "regiao-parcial";
+    p.appendChild(document.createTextNode("vs 1º turno em " + model.formatCentesimos(cmp.base.pst) + ": "));
+    [
+      ["Flávio", cmp.base.flavio, cmp.deltaFlavio],
+      ["Lula", cmp.base.lula, cmp.deltaLula],
+    ].forEach(function (item, index) {
+      if (index) p.appendChild(document.createTextNode(" · "));
+      p.appendChild(document.createTextNode(item[0] + " " + model.formatCentesimos(item[1]) + " "));
+      acrescentarDelta(p, item[2]);
+    });
+    li.appendChild(p);
+  }
+
   function renderRegioes() {
     const lista = document.getElementById("lista-regioes");
     lista.replaceChildren();
+    if (simulacaoAtiva()) {
+      model.REGIOES.forEach(function (regiao) {
+        const cmp = comparacaoSimulada(regiao.id);
+        const li = document.createElement("li");
+        const linha = document.createElement("p");
+        linha.className = "regiao-linha";
+        const nome = document.createElement("span");
+        nome.className = "regiao-nome";
+        nome.textContent = regiao.nome;
+        linha.appendChild(nome);
+        linha.appendChild(document.createTextNode(" — "));
+        if (!cmp) {
+          linha.appendChild(document.createTextNode("sem a série do 1º turno"));
+          li.appendChild(linha);
+        } else {
+          const pares = [
+            { lado: "flavio", nome: "Flávio", c: cmp.flavio },
+            { lado: "lula", nome: "Lula", c: cmp.lula },
+          ].sort(function (a, b) { return b.c - a.c; });
+          const lider = pares[0].c > pares[1].c ? pares[0].lado : "";
+          pares.forEach(function (cand, index) {
+            if (index) linha.appendChild(document.createTextNode(" x "));
+            if (lider === cand.lado) {
+              const marca = document.createElement("i");
+              marca.className = "marca-lider " + cand.lado;
+              marca.setAttribute("aria-hidden", "true");
+              linha.appendChild(marca);
+            }
+            const trecho = document.createElement("span");
+            if (lider === cand.lado) trecho.className = "lider " + cand.lado;
+            trecho.textContent = cand.nome + " " + model.formatCentesimos(cand.c);
+            linha.appendChild(trecho);
+          });
+          li.appendChild(linha);
+          const urnas = document.createElement("p");
+          urnas.className = "regiao-urnas";
+          urnas.textContent = model.formatCentesimos(cmp.pst) + " das urnas";
+          li.appendChild(urnas);
+          appendVs(li, cmp);
+        }
+        lista.appendChild(li);
+      });
+      return;
+    }
     const alguma = model.UFS.some(function (uf) { return apurando(scopeOf(uf)); });
     if (!alguma) {
       model.REGIOES.forEach(function (regiao) {
@@ -752,6 +976,7 @@
         urnas.className = "regiao-urnas";
         urnas.textContent = model.formatCentesimos(item.urnasCentesimos) + " das urnas";
         li.appendChild(urnas);
+        if (item.urnasCentesimos > 0) appendVs(li, comparacaoRealRegiao(regiao));
       }
       lista.appendChild(li);
     });
@@ -826,7 +1051,7 @@
       mapa.innerHTML = '<p class="vazio">Não foi possível carregar o mapa.</p>';
     }
     if (scopeOf("br")) render();
-    await Promise.all([loadAll(), carregarPrimeiroTurno()]);
+    await Promise.all([loadAll(), carregarPrimeiroTurno(), carregarParciais()]);
     render();
     setInterval(loadAll, config.pollMs);
     document.addEventListener("visibilitychange", function () {

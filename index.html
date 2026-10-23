@@ -18,6 +18,7 @@
   <body>
     <div class="shell">
       <p id="aviso" class="aviso info" role="status">Carregando os arquivos oficiais do TSE…</p>
+      <p id="simulacao" class="aviso" hidden></p>
       <header class="top">
         <div>
           <p class="kicker">Presidente</p>
@@ -62,15 +63,15 @@
             </div>
           </section>
           <section class="variacao" aria-label="Variação vs 1º turno">
-            <p class="kicker">Variação vs 1º turno</p>
+            <p id="variacao-titulo" class="kicker">Variação vs 1º turno</p>
             <p id="variacao-estado" class="variacao-estado"></p>
             <div id="variacao-lista"></div>
-            <p class="nota-regiao">No 1º turno havia outros candidatos, por isso esses percentuais não somam 100%.</p>
+            <p class="nota-regiao">Parciais do 1º turno: captura de terceiros dos arquivos do TSE (ArvorCo/PNAD). A ordem da apuração muda de um turno para o outro, então a comparação na mesma % de urnas é uma aproximação. No 1º turno havia outros candidatos, por isso esses percentuais não somam 100%.</p>
           </section>
           <section class="regioes" aria-label="Por região">
             <p class="kicker">Por região</p>
             <ul id="lista-regioes"></ul>
-            <p class="nota-regiao">soma dos estados, calculada a partir dos dados do TSE</p>
+            <p class="nota-regiao">soma dos estados, calculada a partir dos dados do TSE. A comparação usa a captura ArvorCo/PNAD do 1º turno, na % de urnas mais próxima.</p>
           </section>
         </div>
       </main>

@@ -356,6 +356,47 @@
     return { situacao: situacao, linhas: linhas };
   }
 
+  function regiaoDe(uf) {
+    const id = String(uf || "").toLowerCase();
+    for (let i = 0; i < REGIOES.length; i += 1) {
+      if (REGIOES[i].ufs.indexOf(id) !== -1) return REGIOES[i];
+    }
+    return null;
+  }
+
+  function pontoMaisProximo(serie, pstCentesimos) {
+    if (!serie || !serie.length || pstCentesimos == null || !Number.isFinite(pstCentesimos)) return null;
+    let melhor = null;
+    let distancia = Infinity;
+    for (let i = 0; i < serie.length; i += 1) {
+      const ponto = serie[i];
+      if (!ponto || ponto.length < 3) continue;
+      const pst = ponto[0];
+      const dist = Math.abs(pst - pstCentesimos);
+      if (dist < distancia || (dist === distancia && melhor && pst < melhor.pst)) {
+        melhor = { pst: pst, flavio: ponto[1], lula: ponto[2] };
+        distancia = dist;
+      }
+    }
+    if (!melhor) return null;
+    melhor.distancia = distancia;
+    return melhor;
+  }
+
+  function compararMesmaApuracao(serie, pstCentesimos, flavioCentesimos, lulaCentesimos) {
+    if (flavioCentesimos == null || lulaCentesimos == null) return null;
+    const base = pontoMaisProximo(serie, pstCentesimos);
+    if (!base) return null;
+    return {
+      pst: pstCentesimos,
+      flavio: flavioCentesimos,
+      lula: lulaCentesimos,
+      base: base,
+      deltaFlavio: flavioCentesimos - base.flavio,
+      deltaLula: lulaCentesimos - base.lula,
+    };
+  }
+
   return {
     UFS: UFS,
     NOMES: NOMES,
@@ -378,5 +419,8 @@
     pvapCentesimos: pvapCentesimos,
     formatPontos: formatPontos,
     variacaoTurno: variacaoTurno,
+    regiaoDe: regiaoDe,
+    pontoMaisProximo: pontoMaisProximo,
+    compararMesmaApuracao: compararMesmaApuracao,
   };
 });
