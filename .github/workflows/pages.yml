@@ -32,6 +32,9 @@ jobs:
 
       - name: Configurar o Pages
         uses: actions/configure-pages@v5
+        with:
+          # Cria o site Pages com source GitHub Actions se ainda não existir.
+          enablement: true
 
       - name: Enviar o artefato
         uses: actions/upload-pages-artifact@v3
