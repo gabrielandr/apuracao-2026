@@ -601,6 +601,56 @@
       renderPainel(currentUf());
     }
     renderMapa();
+    renderRegioes();
+  }
+
+  function nomeCurto(cand) {
+    if (cand.lado === "lula") return "Lula";
+    if (cand.lado === "flavio") return "Flávio";
+    return cand.nome;
+  }
+
+  function renderRegioes() {
+    const lista = document.getElementById("lista-regioes");
+    lista.replaceChildren();
+    const pair = pairNacional();
+    model.REGIOES.forEach(function (regiao) {
+      const scopes = regiao.ufs.map(function (uf) { return scopeOf(uf); });
+      const item = model.agregarRegiao(regiao, scopes, pair);
+      const li = document.createElement("li");
+      const linha = document.createElement("p");
+      linha.className = "regiao-linha";
+      const nome = document.createElement("span");
+      nome.className = "regiao-nome";
+      nome.textContent = item.nome;
+      linha.appendChild(nome);
+      linha.appendChild(document.createTextNode(" — "));
+      if (!item.completa) {
+        linha.appendChild(document.createTextNode("sem a soma de todos os estados"));
+      } else {
+        item.candidatos.forEach(function (cand, index) {
+          if (index) linha.appendChild(document.createTextNode(" x "));
+          if (item.lider === cand.lado) {
+            const marca = document.createElement("i");
+            marca.className = "marca-lider " + cand.lado;
+            marca.setAttribute("aria-hidden", "true");
+            linha.appendChild(marca);
+          }
+          const trecho = document.createElement("span");
+          if (item.lider === cand.lado) trecho.className = "lider " + cand.lado;
+          trecho.textContent = nomeCurto(cand) + " " + model.formatCentesimos(cand.centesimos);
+          linha.appendChild(trecho);
+        });
+      }
+      li.appendChild(linha);
+      if (item.completa) {
+        const urnas = document.createElement("p");
+        urnas.className = "regiao-urnas";
+        urnas.textContent = model.formatCentesimos(item.urnasCentesimos) + " das urnas";
+        li.appendChild(urnas);
+      }
+      lista.appendChild(li);
+    });
   }
 
   function selecionar(uf) {

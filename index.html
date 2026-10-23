@@ -41,11 +41,18 @@
       </nav>
       <button id="voltar" class="voltar" type="button" hidden>Voltar ao Brasil</button>
       <main class="layout" id="vista-mapa" role="tabpanel" aria-labelledby="aba-mapa">
-        <section class="painel" aria-label="Candidatos">
-          <div id="painel">
-            <p class="vazio">Aguardando o arquivo oficial.</p>
-          </div>
-        </section>
+        <div class="coluna">
+          <section class="painel" aria-label="Candidatos">
+            <div id="painel">
+              <p class="vazio">Aguardando o arquivo oficial.</p>
+            </div>
+          </section>
+          <section class="regioes" aria-label="Por região">
+            <p class="kicker">Por região</p>
+            <ul id="lista-regioes"></ul>
+            <p class="nota-regiao">soma dos estados, calculada a partir dos dados do TSE</p>
+          </section>
+        </div>
         <section class="mapa-card" aria-label="Mapa do Brasil">
           <div class="mapa-head">
             <p class="kicker">Estados</p>

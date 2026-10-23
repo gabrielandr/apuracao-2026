@@ -57,6 +57,8 @@ O diretório está no `ele-c.json`, tipo `u`: `<base>/<ambiente>/<ciclo>/<cd_ele
 | Abstenção | `e.a` e `e.pa` |
 | Horário do TSE | `dg` e `hg`, horário de Brasília |
 
+O card **Por região**, na aba Mapa, soma o `vap` de cada candidato nas UFs da região e divide pela soma de `v.vv` (votos válidos) dessas UFs. O percentual de urnas é a soma de `s.st` dividida pela soma de `s.ts`. Não é média de percentuais. O Exterior (ZZ) fica de fora. O TSE não publica esse recorte.
+
 A cor do estado é a diferença, em pontos percentuais, entre o `pvapn` desses dois candidatos:
 
 - menos de 2: branco `#ffffff`

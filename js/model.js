@@ -148,7 +148,93 @@
         n: json && json.e ? String(json.e.a ?? "") : "",
         p: json && json.e ? String(json.e.pa ?? "") : "",
       },
+      validos: json && json.v && json.v.vv != null ? String(json.v.vv) : "",
       candidates,
+    };
+  }
+
+  const REGIOES = [
+    { id: "norte", nome: "Norte", ufs: ["ac", "ap", "am", "pa", "ro", "rr", "to"] },
+    { id: "nordeste", nome: "Nordeste", ufs: ["al", "ba", "ce", "ma", "pb", "pe", "pi", "rn", "se"] },
+    { id: "centro-oeste", nome: "Centro-Oeste", ufs: ["df", "go", "ms", "mt"] },
+    { id: "sudeste", nome: "Sudeste", ufs: ["es", "mg", "rj", "sp"] },
+    { id: "sul", nome: "Sul", ufs: ["pr", "rs", "sc"] },
+  ];
+
+  function inteiroOficial(value) {
+    if (value == null || value === "") return null;
+    const texto = String(value).trim();
+    if (!/^\d+$/.test(texto)) return null;
+    return Number(texto);
+  }
+
+  function centesimosDe(parte, total) {
+    if (parte == null || total == null || total <= 0 || parte < 0) return null;
+    return Math.floor((parte * 10000 + Math.floor(total / 2)) / total);
+  }
+
+  function formatCentesimos(centesimos) {
+    if (centesimos == null) return "—";
+    const abs = Math.abs(centesimos);
+    const inteiro = Math.floor(abs / 100);
+    const frac = String(abs % 100).padStart(2, "0");
+    return (centesimos < 0 ? "-" : "") + inteiro + "," + frac + "%";
+  }
+
+  function agregarRegiao(regiao, scopes, pair) {
+    const base = {
+      id: regiao.id,
+      nome: regiao.nome,
+      ufs: regiao.ufs.slice(),
+      completa: false,
+      candidatos: [],
+      lider: "",
+      urnasCentesimos: null,
+      validos: null,
+      secoesTotalizadas: null,
+      secoesTotal: null,
+    };
+    if (!pair || pair.length !== 2 || !scopes || scopes.length !== regiao.ufs.length) return base;
+    let st = 0;
+    let ts = 0;
+    let validos = 0;
+    const votos = [0, 0];
+    for (let i = 0; i < scopes.length; i += 1) {
+      const scope = scopes[i];
+      if (!scope) return base;
+      const totalizadas = inteiroOficial(scope.secoesTotalizadas);
+      const total = inteiroOficial(scope.secoesTotal);
+      const vv = inteiroOficial(scope.validos);
+      const alinhados = alignPair(scope, pair);
+      const vap0 = alinhados[0] ? inteiroOficial(alinhados[0].vap) : null;
+      const vap1 = alinhados[1] ? inteiroOficial(alinhados[1].vap) : null;
+      if (totalizadas == null || total == null || vv == null || vap0 == null || vap1 == null) return base;
+      st += totalizadas;
+      ts += total;
+      validos += vv;
+      votos[0] += vap0;
+      votos[1] += vap1;
+    }
+    const candidatos = [0, 1].map(function (i) {
+      return {
+        nome: pair[i].nome,
+        lado: pair[i].lado,
+        vap: votos[i],
+        centesimos: centesimosDe(votos[i], validos),
+      };
+    });
+    candidatos.sort(function (a, b) { return b.vap - a.vap; });
+    return {
+      id: regiao.id,
+      nome: regiao.nome,
+      ufs: regiao.ufs.slice(),
+      completa: true,
+      candidatos: candidatos,
+      lider: candidatos[0].vap > candidatos[1].vap ? candidatos[0].lado : "",
+      urnasCentesimos: centesimosDe(st, ts),
+      validos: validos,
+      secoesTotalizadas: st,
+      secoesTotal: ts,
     };
   }
 
@@ -236,5 +322,10 @@
     formatInt: formatInt,
     formatPct: formatPct,
     compactPct: compactPct,
+    REGIOES: REGIOES,
+    inteiroOficial: inteiroOficial,
+    centesimosDe: centesimosDe,
+    formatCentesimos: formatCentesimos,
+    agregarRegiao: agregarRegiao,
   };
 });
