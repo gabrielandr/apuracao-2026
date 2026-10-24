@@ -421,11 +421,13 @@ select {
 
 .map-scroll { width: 100%; }
 #mapa-locais { display: flex; flex-direction: column; gap: 8px; }
+#mapa-locais[hidden] { display: none !important; }
 #voltar-brasil {
   min-height: 44px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
   cursor: pointer;
   padding: 8px 16px;
   font-weight: 650;
@@ -440,7 +442,13 @@ select {
 }
 .locais-nota { margin: 0; color: var(--muted); font-size: 0.85rem; }
 .leaflet-popup-content { margin: 10px 14px; font-family: Outfit, "Segoe UI", sans-serif; }
-.locais-pop .locais-nome { margin: 0; font-weight: 700; color: #102033; }
+.locais-pop .locais-nome { margin: 0; font-weight: 700; color: #102033; overflow-wrap: anywhere; }
+.leaflet-tooltip {
+  font-family: Outfit, "Segoe UI", sans-serif;
+  font-weight: 650;
+  font-size: 13px;
+  color: #102033;
+}
 .locais-pop .locais-lugar,
 .locais-pop .locais-secoes { margin: 2px 0 0; color: #334155; }
 .locais-pop .locais-cand { margin: 4px 0 0; font-weight: 650; }

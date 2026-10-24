@@ -833,11 +833,18 @@
     }
   }
 
+  // Só o 1º turno de RJ e SP. O 2º turno fica no mapa dos estados e não lê estes arquivos.
   const LOCAIS_UF = { rj: true, sp: true };
-  const locaisJson = Object.create(null);
+  const ZOOM_BAIRRO = 10;
+  const agregados = Object.create(null);
   let locaisMapa = null;
+  let locaisCamada = null;
   let locaisDesenhado = "";
   let locaisPedido = 0;
+  let locaisUf = "";
+  let focoCd = null;
+  let travando = false;
+  let desenhoId = 0;
 
   function querLocais(uf) {
     return vistaPrimeiro() && !!LOCAIS_UF[uf];
@@ -848,20 +855,65 @@
     mapa.hidden = false;
     mapaKicker.textContent = "Estados";
     mapaCard.setAttribute("aria-label", "Mapa do Brasil");
+    focoCd = null;
+    desenhoId += 1;
     if (locaisMapa) {
       locaisMapa.remove();
       locaisMapa = null;
+      locaisCamada = null;
       locaisDesenhado = "";
     }
   }
 
+  function inteiroLocal(valor) {
+    return typeof valor === "number" && Number.isFinite(valor) && Math.floor(valor) === valor;
+  }
+
+  function coordLocal(la, lo) {
+    return typeof la === "number" && typeof lo === "number" && la > -34 && la < 6 && lo > -75 && lo < -28;
+  }
+
+  function conferirAgregado(munJson, bairroJson, uf) {
+    if (!munJson || munJson.uf !== uf || munJson.ele !== "6257" || !Array.isArray(munJson.mun)) return false;
+    if (!bairroJson || bairroJson.uf !== uf || bairroJson.ele !== "6257" || !Array.isArray(bairroJson.bairros)) return false;
+    const acc = Object.create(null);
+    for (let i = 0; i < munJson.mun.length; i += 1) {
+      const mun = munJson.mun[i];
+      if (!inteiroLocal(mun.cd) || !coordLocal(mun.la, mun.lo)) return false;
+      if (!inteiroLocal(mun.f) || !inteiroLocal(mun.u) || !inteiroLocal(mun.v)) return false;
+      if (!inteiroLocal(mun.br) || !inteiroLocal(mun.nu) || !inteiroLocal(mun.loc) || !inteiroLocal(mun.s)) return false;
+      acc[mun.cd] = { f: 0, u: 0, v: 0, br: 0, nu: 0, loc: 0, s: 0 };
+    }
+    for (let i = 0; i < bairroJson.bairros.length; i += 1) {
+      const bairro = bairroJson.bairros[i];
+      const soma = acc[bairro.cd];
+      if (!soma || !inteiroLocal(bairro.f) || !inteiroLocal(bairro.u) || !inteiroLocal(bairro.v)) return false;
+      if (!inteiroLocal(bairro.br) || !inteiroLocal(bairro.nu) || !inteiroLocal(bairro.loc) || !inteiroLocal(bairro.s)) return false;
+      if ((bairro.la != null || bairro.lo != null) && !coordLocal(bairro.la, bairro.lo)) return false;
+      soma.f += bairro.f;
+      soma.u += bairro.u;
+      soma.v += bairro.v;
+      soma.br += bairro.br;
+      soma.nu += bairro.nu;
+      soma.loc += bairro.loc;
+      soma.s += bairro.s;
+    }
+    for (let i = 0; i < munJson.mun.length; i += 1) {
+      const mun = munJson.mun[i];
+      const soma = acc[mun.cd];
+      if (soma.f !== mun.f || soma.u !== mun.u || soma.v !== mun.v) return false;
+      if (soma.br !== mun.br || soma.nu !== mun.nu || soma.loc !== mun.loc || soma.s !== mun.s) return false;
+    }
+    return true;
+  }
+
   function corLocal(flavio, lula, validos) {
-    if (!(validos > 0)) return { fill: "#f4f7fb", stroke: "#334155" };
+    if (!(validos > 0)) return { fill: "#4a5d73", stroke: "#ffffff" };
     const cf = model.centesimosDe(flavio, validos);
     const cu = model.centesimosDe(lula, validos);
-    if (cf == null || cu == null) return { fill: "#f4f7fb", stroke: "#334155" };
+    if (cf == null || cu == null) return { fill: "#4a5d73", stroke: "#ffffff" };
     const diff = Math.abs(cf - cu);
-    if (diff < 200) return { fill: "#f4f7fb", stroke: "#334155" };
+    if (diff < 200) return { fill: "#ffffff", stroke: "#334155" };
     const lado = cf > cu ? "flavio" : "lula";
     const tom = diff >= 2000 ? "3" : diff >= 1000 ? "2" : "1";
     const paleta = {
@@ -875,23 +927,29 @@
     return { fill: paleta[lado + "-" + tom], stroke: "#ffffff" };
   }
 
-  function raioLocal(votos, maximo) {
-    if (!(maximo > 0)) return 6;
-    return 5 + Math.sqrt(votos / maximo) * 11;
+  function raioCirculo(votos, maximo, piso, teto) {
+    if (!(maximo > 0) || !(votos > 0)) return piso;
+    return piso + Math.sqrt(votos / maximo) * (teto - piso);
   }
 
-  function popupLocal(ponto) {
+  function textoContagem(locais, secoes) {
+    const loc = locais === 1 ? "1 local de votação" : model.formatInt(locais) + " locais de votação";
+    const sec = secoes === 1 ? "1 seção" : model.formatInt(secoes) + " seções";
+    return loc + " · " + sec;
+  }
+
+  function popupBairro(ponto, nomeMun) {
     const caixa = document.createElement("div");
     caixa.className = "locais-pop";
     const nome = document.createElement("p");
     nome.className = "locais-nome";
-    nome.textContent = ponto.n || "Local de votação";
+    nome.textContent = ponto.n || "Bairro";
     const lugar = document.createElement("p");
     lugar.className = "locais-lugar";
-    lugar.textContent = [ponto.b, ponto.m].filter(Boolean).join(" · ");
+    lugar.textContent = nomeMun || "";
     const secoes = document.createElement("p");
     secoes.className = "locais-secoes";
-    secoes.textContent = ponto.s + (ponto.s === 1 ? " seção" : " seções");
+    secoes.textContent = textoContagem(ponto.loc, ponto.s);
     caixa.append(nome, lugar, secoes);
     [
       ["flavio", "Flávio", ponto.f],
@@ -906,65 +964,217 @@
     return caixa;
   }
 
-  function desenharLocais(json) {
-    if (locaisMapa) {
-      locaisMapa.remove();
-      locaisMapa = null;
-    }
-    const pontos = (json.locais || []).filter(function (ponto) {
-      return Number.isFinite(ponto.la) && Number.isFinite(ponto.lo);
+  function bairrosDe(cd, comPonto) {
+    const lista = agregados[locaisUf] ? agregados[locaisUf].bairros : [];
+    return lista.filter(function (bairro) {
+      if (bairro.cd !== cd) return false;
+      if (comPonto && !coordLocal(bairro.la, bairro.lo)) return false;
+      return true;
     });
-    locaisMapaEl.dataset.pontos = String(pontos.length);
-    locaisMapaEl.replaceChildren();
-    const mapaRuas = L.map(locaisMapaEl, { preferCanvas: true, scrollWheelZoom: true, minZoom: 5, maxZoom: 18 });
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(mapaRuas);
+  }
+
+  function nomeMunicipio(cd) {
+    const lista = agregados[locaisUf] ? agregados[locaisUf].mun : [];
+    for (let i = 0; i < lista.length; i += 1) {
+      if (lista[i].cd === cd) return lista[i].n;
+    }
+    return "";
+  }
+
+  function textoRessalvas(meta) {
+    if (!meta) return "";
+    let texto = "";
+    if (meta.semBairro) {
+      texto += " " + model.formatInt(meta.semBairro) + (meta.semBairro === 1
+        ? " local sem bairro no cadastro do TSE entra como Bairro não informado."
+        : " locais sem bairro no cadastro do TSE entram como Bairro não informado.");
+    }
+    if (meta.semCoord) {
+      texto += " " + model.formatInt(meta.semCoord) + (meta.semCoord === 1
+        ? " local sem coordenada entra na soma e não puxa o centro."
+        : " locais sem coordenada entram na soma e não puxam o centro.");
+    }
+    if (meta.bairrosSemCoord) {
+      texto += " " + model.formatInt(meta.bairrosSemCoord) + (meta.bairrosSemCoord === 1
+        ? " bairro sem coordenada fica fora do mapa."
+        : " bairros sem coordenada ficam fora do mapa.");
+    }
+    return texto;
+  }
+
+  function desenharCirculos(pontos, modo) {
+    if (!locaisMapa) return;
+    if (locaisCamada) {
+      locaisCamada.remove();
+      locaisCamada = null;
+    }
+    locaisMapa.closePopup();
+    const grupo = L.layerGroup();
     let maximo = 0;
     pontos.forEach(function (ponto) {
       if (ponto.v > maximo) maximo = ponto.v;
     });
-    const ordem = pontos.slice().sort(function (a, b) { return b.v - a.v; });
-    ordem.forEach(function (ponto) {
+    const piso = 5;
+    const teto = modo === "mun" ? 18 : 14;
+    pontos.slice().sort(function (a, b) { return b.v - a.v; }).forEach(function (ponto) {
       const cor = corLocal(ponto.f, ponto.u, ponto.v);
       const marca = L.circleMarker([ponto.la, ponto.lo], {
-        radius: raioLocal(ponto.v, maximo),
+        radius: raioCirculo(ponto.v, maximo, piso, teto),
         color: cor.stroke,
-        weight: 1,
+        weight: cor.fill === "#ffffff" ? 1.5 : 1,
         fillColor: cor.fill,
-        fillOpacity: 0.92,
+        fillOpacity: 0.9,
       });
-      marca.on("click", function () {
-        L.popup({ maxWidth: 280, autoPan: true })
+      marca.apuracaoCd = ponto.cd;
+      marca.apuracaoNome = ponto.n;
+      marca.apuracaoModo = modo;
+      marca.bindTooltip(ponto.n, { direction: "top", opacity: 0.96 });
+      marca.on("click", function (evento) {
+        if (evento.originalEvent) L.DomEvent.stopPropagation(evento.originalEvent);
+        if (modo === "mun") {
+          focarMunicipio(ponto.cd);
+          return;
+        }
+        L.popup({ maxWidth: 300, autoPan: true })
           .setLatLng(marca.getLatLng())
-          .setContent(popupLocal(ponto))
-          .openOn(mapaRuas);
+          .setContent(popupBairro(ponto, nomeMunicipio(ponto.cd)))
+          .openOn(locaisMapa);
       });
-      marca.addTo(mapaRuas);
+      marca.addTo(grupo);
+    });
+    grupo.addTo(locaisMapa);
+    locaisCamada = grupo;
+    locaisMapaEl.dataset.nivel = modo;
+    locaisMapaEl.dataset.pontos = String(pontos.length);
+    locaisMapaEl.dataset.foco = focoCd == null ? "" : String(focoCd);
+  }
+
+  function mostrarMunicipios() {
+    focoCd = null;
+    const pontos = (agregados[locaisUf] ? agregados[locaisUf].mun : []).filter(function (mun) {
+      return coordLocal(mun.la, mun.lo);
+    });
+    desenharCirculos(pontos, "mun");
+    const nome = model.NOMES[locaisUf] || locaisUf;
+    let texto = model.formatInt(pontos.length) + (pontos.length === 1 ? " município." : " municípios.");
+    texto += " O círculo fica no centro dos locais de votação, ponderado pelos votos válidos. Aproxime ou clique num município para ver os bairros.";
+    texto += textoRessalvas(agregados[locaisUf] && agregados[locaisUf].meta);
+    locaisResumo.textContent = texto;
+    mapaKicker.textContent = "Municípios";
+    mapaCard.setAttribute("aria-label", "Municípios de " + nome);
+  }
+
+  function mostrarBairros() {
+    if (!locaisMapa || !agregados[locaisUf]) return;
+    let lista;
+    if (focoCd != null) {
+      lista = bairrosDe(focoCd, true);
+    } else {
+      const bounds = locaisMapa.getBounds().pad(0.08);
+      lista = agregados[locaisUf].bairros.filter(function (bairro) {
+        return coordLocal(bairro.la, bairro.lo) && bounds.contains([bairro.la, bairro.lo]);
+      });
+    }
+    desenharCirculos(lista, "bairro");
+    const nomeUf = model.NOMES[locaisUf] || locaisUf;
+    let texto;
+    if (focoCd != null) {
+      const nome = nomeMunicipio(focoCd);
+      const fora = bairrosDe(focoCd, false).length - lista.length;
+      texto = "Bairros de " + nome + ": " + model.formatInt(lista.length) + (lista.length === 1 ? " círculo." : " círculos.");
+      if (fora > 0) {
+        texto += " " + model.formatInt(fora) + (fora === 1
+          ? " bairro sem coordenada fica fora; os votos entram no total do município."
+          : " bairros sem coordenada ficam fora; os votos entram no total do município.");
+      }
+      mapaCard.setAttribute("aria-label", "Bairros de " + nome);
+    } else {
+      texto = model.formatInt(lista.length) + (lista.length === 1 ? " bairro nesta área." : " bairros nesta área.");
+      mapaCard.setAttribute("aria-label", "Bairros em " + nomeUf);
+    }
+    locaisResumo.textContent = texto;
+    mapaKicker.textContent = "Bairros";
+  }
+
+  function focarMunicipio(cd) {
+    const pontos = bairrosDe(cd, true);
+    if (!pontos.length || !locaisMapa) return;
+    focoCd = cd;
+    travando = true;
+    if (pontos.length === 1) {
+      locaisMapa.setView([pontos[0].la, pontos[0].lo], Math.max(ZOOM_BAIRRO, 12), { animate: false });
+    } else {
+      locaisMapa.fitBounds(L.latLngBounds(pontos.map(function (ponto) { return [ponto.la, ponto.lo]; })), {
+        padding: [28, 28],
+        maxZoom: 13,
+        animate: false,
+      });
+      if (locaisMapa.getZoom() < ZOOM_BAIRRO) locaisMapa.setZoom(ZOOM_BAIRRO);
+    }
+    travando = false;
+    mostrarBairros();
+  }
+
+  function desenharAgregado() {
+    if (locaisMapa) {
+      locaisMapa.remove();
+      locaisMapa = null;
+      locaisCamada = null;
+    }
+    const id = ++desenhoId;
+    locaisMapaEl.replaceChildren();
+    const mapaRuas = L.map(locaisMapaEl, {
+      preferCanvas: true,
+      scrollWheelZoom: true,
+      minZoom: 5,
+      maxZoom: 16,
+    });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(mapaRuas);
+    let gestoUsuario = false;
+    mapaRuas.on("zoomstart", function (evento) {
+      if (!travando && evento && evento.originalEvent) gestoUsuario = true;
+    });
+    mapaRuas.on("dragstart", function (evento) {
+      if (!travando && evento && evento.originalEvent) gestoUsuario = true;
+    });
+    mapaRuas.getContainer().querySelectorAll(".leaflet-control-zoom a").forEach(function (botao) {
+      botao.addEventListener("click", function () { gestoUsuario = true; }, true);
+    });
+    mapaRuas.on("zoomend", function () {
+      if (travando || locaisMapa !== mapaRuas || !gestoUsuario) return;
+      gestoUsuario = false;
+      focoCd = null;
+      if (mapaRuas.getZoom() >= ZOOM_BAIRRO) mostrarBairros();
+      else mostrarMunicipios();
+    });
+    mapaRuas.on("dragend", function () {
+      if (travando || locaisMapa !== mapaRuas || !gestoUsuario) return;
+      gestoUsuario = false;
+      if (mapaRuas.getZoom() < ZOOM_BAIRRO) return;
+      focoCd = null;
+      mostrarBairros();
     });
     locaisMapa = mapaRuas;
     locaisMapaEl._map = mapaRuas;
-    const foraLista = json.sem || [];
-    const fora = json.semCoord || foraLista.length;
-    let texto = model.formatInt(pontos.length) + " locais de votação.";
-    if (fora) {
-      const votosFora = foraLista.reduce(function (acc, ponto) {
-        acc.f += ponto.f || 0;
-        acc.u += ponto.u || 0;
-        return acc;
-      }, { f: 0, u: 0 });
-      texto += " " + model.formatInt(fora) + (fora === 1 ? " local sem coordenada no TSE ficou fora do mapa" : " locais sem coordenada no TSE ficaram fora do mapa");
-      if (votosFora.f || votosFora.u) {
-        texto += " (Flávio " + model.formatInt(votosFora.f) + ", Lula " + model.formatInt(votosFora.u) + ")";
-      }
-      texto += ".";
-    }
-    locaisResumo.textContent = texto;
+    mostrarMunicipios();
     requestAnimationFrame(function () {
+      if (id !== desenhoId || locaisMapa !== mapaRuas) return;
       mapaRuas.invalidateSize();
+      const pontos = (agregados[locaisUf] ? agregados[locaisUf].mun : []).filter(function (mun) {
+        return coordLocal(mun.la, mun.lo);
+      });
       if (!pontos.length) return;
-      mapaRuas.fitBounds(L.latLngBounds(pontos.map(function (ponto) { return [ponto.la, ponto.lo]; })), { padding: [18, 18], maxZoom: 12 });
+      travando = true;
+      mapaRuas.fitBounds(L.latLngBounds(pontos.map(function (ponto) { return [ponto.la, ponto.lo]; })), {
+        padding: [18, 18],
+        maxZoom: ZOOM_BAIRRO - 1,
+        animate: false,
+      });
+      travando = false;
+      mostrarMunicipios();
     });
   }
 
@@ -975,35 +1185,42 @@
     }
     mapa.hidden = true;
     mapaLocais.hidden = false;
-    mapaKicker.textContent = "Locais de votação";
-    mapaCard.setAttribute("aria-label", "Locais de votação em " + (model.NOMES[uf] || uf));
+    mapaKicker.textContent = "Municípios";
+    mapaCard.setAttribute("aria-label", "Municípios de " + (model.NOMES[uf] || uf));
     if (locaisDesenhado === uf && locaisMapa) return;
     const pedido = ++locaisPedido;
-    locaisResumo.textContent = "Carregando os locais de votação…";
+    locaisResumo.textContent = "Carregando municípios e bairros…";
     if (locaisMapa) {
       locaisMapa.remove();
       locaisMapa = null;
+      locaisCamada = null;
       locaisDesenhado = "";
     }
     if (!window.L) {
-      locaisResumo.textContent = "O mapa de ruas não carregou. Nenhum ponto foi estimado.";
+      locaisResumo.textContent = "O mapa de ruas não carregou. Nenhum círculo foi estimado.";
       return;
     }
     try {
-      if (!locaisJson[uf]) {
-        const resposta = await fetch(arquivoDados("locais/" + uf + "-1t.json"), { cache: "no-cache" });
-        if (!resposta.ok) throw new Error("HTTP " + resposta.status);
-        const json = await resposta.json();
-        if (!json || json.uf !== uf || !Array.isArray(json.locais)) throw new Error("arquivo");
-        locaisJson[uf] = json;
+      if (!agregados[uf]) {
+        const respostas = await Promise.all([
+          fetch(arquivoDados("locais/" + uf + "-1t-mun.json"), { cache: "no-cache" }),
+          fetch(arquivoDados("locais/" + uf + "-1t-bairros.json"), { cache: "no-cache" }),
+        ]);
+        if (!respostas[0].ok || !respostas[1].ok) throw new Error("HTTP");
+        const munJson = await respostas[0].json();
+        const bairroJson = await respostas[1].json();
+        if (!conferirAgregado(munJson, bairroJson, uf)) throw new Error("soma");
+        agregados[uf] = { mun: munJson.mun, bairros: bairroJson.bairros, meta: munJson.meta || {} };
       }
     } catch (err) {
       if (pedido !== locaisPedido) return;
-      locaisResumo.textContent = "O arquivo de locais de votação não carregou. Nenhum ponto foi estimado.";
+      locaisResumo.textContent = "O arquivo de municípios e bairros não carregou ou não fecha a soma. Nenhum círculo foi estimado.";
       return;
     }
     if (pedido !== locaisPedido || !querLocais(currentUf())) return;
-    desenharLocais(locaisJson[uf]);
+    locaisUf = uf;
+    focoCd = null;
+    desenharAgregado();
     locaisDesenhado = uf;
   }
 
